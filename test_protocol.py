@@ -38,11 +38,12 @@ def main() -> None:
         business_schema = tools_by_name["search_business"]["inputSchema"]
         assert business_schema["required"] == []
         assert "city is not required" in business_schema["properties"]["city"]["description"].lower()
-        assert "explicit permission" in tools_by_name["search_business"]["description"]
+        assert "explicitly display the 10 masked samples" in tools_by_name["search_business"]["description"].lower()
+        assert "do not call purchase_business" in tools_by_name["search_business"]["description"].lower()
         assert "purchase_business" in tools_by_name["search_business"]["description"]
         assert "recommended workflow" in tools_by_name["search_business"]["description"].lower()
-        assert "return the 10 masked samples to the user" in tools_by_name["search_business"]["description"].lower()
         assert "search_business first" in tools_by_name["purchase_business"]["description"]
+        assert "do not call this tool unless the user gave explicit permission" in tools_by_name["purchase_business"]["description"].lower()
 
         search_ids = []
         for request_id, tool_name, args in [
@@ -52,7 +53,8 @@ def main() -> None:
         ]:
             result = payload(call(paid, request_id, "tools/call", {"name": tool_name, "arguments": args}))
             assert len(result["masked_samples"]) == 10
-            assert result["credits_available"] == 60
+            assert "credits_available" not in result
+            assert "reveal_cost" not in result
             assert result["insights"]["total_count"] == result["total_matches"] == 20
             assert result["insights"]["scope"] == "all matching records, not only the masked previews"
             search_ids.append(result["search_id"])

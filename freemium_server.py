@@ -14,8 +14,6 @@ class FreemiumDemo:
 
     def search_business(self, arguments: dict[str, Any]) -> dict[str, Any]:
         payload = self.paid_demo.search_business(arguments)
-        payload.pop("credits_available", None)
-        payload.pop("reveal_cost", None)
         payload["plan"] = "freemium"
         return payload
 
@@ -36,8 +34,8 @@ def build_server() -> StdioMCPServer:
     }
     purchase_props = {"search_id": {"type": "string"}, "count": {"type": "integer", "minimum": 1}}
     tools = [
-        tool("search_business", "Freemium business search. All filters are optional, including city. The search never reveals full records. Recommended workflow: 1) Return the 10 masked samples to the user together with total matches and aggregate insights for the full result set. 2) Ask how many records the user wants revealed. 3) Ask for permission to proceed. 4) If the user provides a number and permission, call purchase_business with this search_id and count; it will return the Pro or Teams upgrade message.", search_props),
-        tool("purchase_business", "Workflow: call search_business first and use its returned search_id. Do not call this purchase tool without a prior search. After the user provides a record count and permission, call this tool; it always returns an upgrade-required message with the Pro or Teams subscription link.", purchase_props, ["search_id", "count"]),
+        tool("search_business", "Freemium business search. All filters are optional, including city. The search never reveals full records. Recommended workflow: 1) Explicitly display the 10 masked samples to the user. 2) Show the total matches and aggregate insights for the full result set. 3) Ask how many records the user wants revealed and ask for permission to proceed. 4) Do not call purchase_business if the user has not provided both a number and permission. Only after permission, call purchase_business with this search_id and count; it will return the Pro or Teams upgrade message.", search_props),
+        tool("purchase_business", "Workflow: call search_business first and use its returned search_id. Do not call this tool unless the user gave explicit permission in response to the search workflow and provided a record count. After permission, call this tool; it always returns an upgrade-required message with the Pro or Teams subscription link.", purchase_props, ["search_id", "count"]),
     ]
     return StdioMCPServer(name="freemium-data-demo", version="1.0.0", tools=tools, handlers={"search_business": demo.search_business, "purchase_business": demo.purchase_business})
 
