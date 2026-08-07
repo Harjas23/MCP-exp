@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from http.client import HTTPConnection
 import subprocess
 import sys
 import time
@@ -27,6 +28,22 @@ def tool_payload(response: dict) -> dict:
     return json.loads(response["result"]["content"][0]["text"])
 
 
+def post_chunked(port: int, message: dict) -> dict:
+    """Send one MCP request using the transfer encoding Claude used in the failure."""
+    body = json.dumps(message).encode()
+    connection = HTTPConnection("127.0.0.1", port, timeout=5)
+    connection.putrequest("POST", "/mcp")
+    connection.putheader("Content-Type", "application/json")
+    connection.putheader("Accept", "application/json, text/event-stream")
+    connection.putheader("Transfer-Encoding", "chunked")
+    connection.endheaders()
+    connection.send(f"{len(body):x}\r\n".encode() + body + b"\r\n0\r\n\r\n")
+    response = connection.getresponse()
+    result = json.loads(response.read())
+    connection.close()
+    return result
+
+
 def main() -> None:
     port = "8765"
     process = subprocess.Popen([sys.executable, str(ROOT / "paid_remote_server.py")], env={**__import__("os").environ, "PORT": port}, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -41,6 +58,9 @@ def main() -> None:
                 time.sleep(0.1)
         else:
             raise AssertionError("Remote server did not start")
+
+        chunked_initialize = post_chunked(int(port), {"jsonrpc": "2.0", "id": 99, "method": "initialize", "params": {"protocolVersion": "2025-06-18"}})
+        assert chunked_initialize["result"]["serverInfo"]["name"] == "paid-data-demo"
 
         initialize, session = post(base + "/mcp", {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}})
         assert initialize["result"]["serverInfo"]["name"] == "paid-data-demo"

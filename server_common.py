@@ -7,7 +7,8 @@ import sys
 from typing import Any, Callable
 
 
-SERVER_PROTOCOL_VERSION = "2024-11-05"
+SERVER_PROTOCOL_VERSION = "2025-06-18"
+SUPPORTED_PROTOCOL_VERSIONS = {"2025-06-18", "2025-03-26", "2024-11-05"}
 
 
 def text_result(payload: dict[str, Any], *, is_error: bool = False) -> dict[str, Any]:
@@ -52,11 +53,13 @@ class StdioMCPServer:
             return None
 
         if method == "initialize":
+            requested_version = (params.get("protocolVersion") or "").strip()
+            negotiated_version = requested_version if requested_version in SUPPORTED_PROTOCOL_VERSIONS else SERVER_PROTOCOL_VERSION
             return {
                 "jsonrpc": "2.0",
                 "id": request_id,
                 "result": {
-                    "protocolVersion": SERVER_PROTOCOL_VERSION,
+                    "protocolVersion": negotiated_version,
                     "capabilities": {"tools": {"listChanged": False}},
                     "serverInfo": {"name": self.name, "version": self.version},
                 },

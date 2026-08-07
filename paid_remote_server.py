@@ -55,6 +55,31 @@ class RemoteMCPHandler(BaseHTTPRequestHandler):
         self._cors()
         self.end_headers()
 
+    def _read_request_body(self) -> bytes:
+        """Read both Content-Length and HTTP/1.1 chunked request bodies."""
+        transfer_encoding = self.headers.get("Transfer-Encoding", "").lower()
+        if "chunked" in transfer_encoding:
+            chunks: list[bytes] = []
+            while True:
+                size_line = self.rfile.readline().strip()
+                if not size_line:
+                    raise ValueError("Missing chunk size")
+                size_token = size_line.split(b";", 1)[0]
+                size = int(size_token, 16)
+                if size == 0:
+                    # Consume optional trailer headers and the final blank line.
+                    while self.rfile.readline().strip():
+                        pass
+                    break
+                chunk = self.rfile.read(size)
+                if len(chunk) != size or self.rfile.read(2) != b"\r\n":
+                    raise ValueError("Invalid chunk framing")
+                chunks.append(chunk)
+            return b"".join(chunks)
+
+        length = int(self.headers.get("Content-Length", "0"))
+        return self.rfile.read(length)
+
     def do_OPTIONS(self) -> None:
         self._send_empty(204)
 
@@ -85,8 +110,7 @@ class RemoteMCPHandler(BaseHTTPRequestHandler):
             return
 
         try:
-            length = int(self.headers.get("Content-Length", "0"))
-            message = json.loads(self.rfile.read(length))
+            message = json.loads(self._read_request_body())
         except (ValueError, json.JSONDecodeError):
             self._send_json(400, {"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "Invalid JSON"}})
             return
