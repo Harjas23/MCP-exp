@@ -35,6 +35,7 @@ def main() -> None:
         search, session = post(base + "/mcp", {"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "search_business", "arguments": {"business_name": "Starbucks", "city": "Ohio"}}}, session)
         search_data = tool_payload(search)
         assert len(search_data["masked_samples"]) == 10
+        assert "plan" not in search_data
         purchase, _ = post(base + "/mcp", {"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "purchase_business", "arguments": {"search_id": search_data["search_id"], "count": 1}}}, session)
         assert purchase["result"]["isError"] is True
         assert tool_payload(purchase)["status"] == "upgrade_required"

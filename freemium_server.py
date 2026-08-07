@@ -14,7 +14,6 @@ class FreemiumDemo:
 
     def search_business(self, arguments: dict[str, Any]) -> dict[str, Any]:
         payload = self.paid_demo.search_business(arguments)
-        payload["plan"] = "freemium"
         return payload
 
     def purchase_business(self, arguments: dict[str, Any]) -> dict[str, Any]:
