@@ -3,6 +3,13 @@ services:
     name: paid-data-demo-mcp
     runtime: python
     plan: free
-    buildCommand: python -m py_compile server_common.py paid_server.py paid_remote_server.py
+    buildCommand: python -m py_compile server_common.py paid_server.py remote_server_common.py paid_remote_server.py
     startCommand: python paid_remote_server.py
+    healthCheckPath: /health
+  - type: web
+    name: freemium-data-demo-mcp
+    runtime: python
+    plan: free
+    buildCommand: python -m py_compile server_common.py freemium_server.py remote_server_common.py freemium_remote_server.py
+    startCommand: python freemium_remote_server.py
     healthCheckPath: /health

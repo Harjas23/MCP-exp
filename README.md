@@ -44,9 +44,9 @@ Restart Claude Desktop after saving the configuration.
 
 ## Render deployment for Claude web
 
-`paid_remote_server.py` is the paid-only remote duplicate. It listens on Render's `PORT`, exposes the MCP endpoint at `/mcp`, and exposes `/health` for the service health check. `render.yaml` contains the Free web-service configuration.
+`paid_remote_server.py` and `freemium_remote_server.py` are the remote duplicates. They listen on Render's `PORT`, expose the MCP endpoint at `/mcp`, and expose `/health` for the service health check. `render.yaml` deploys both as separate Free web services.
 
-After deployment, use the resulting HTTPS URL ending in `/mcp` as a custom connector URL in Claude web under Settings > Connectors > Add custom connector. The remote wrapper keeps the paid balance in process memory for this demo; a service restart or free-tier sleep resets the 60 credits.
+After deployment, use the paid service HTTPS URL ending in `/mcp` for the paid connector and the freemium service HTTPS URL ending in `/mcp` for the freemium connector in Claude web under Settings > Connectors > Add custom connector. The remote wrapper keeps the paid balance in process memory for this demo; a service restart or free-tier sleep resets the 5 credits.
 
 ## Demo sequence
 

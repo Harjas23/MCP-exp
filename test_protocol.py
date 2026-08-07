@@ -38,17 +38,20 @@ def main() -> None:
         business_schema = tools_by_name["search_business"]["inputSchema"]
         assert business_schema["required"] == []
         assert "omit city only when no location is provided" in business_schema["properties"]["city"]["description"].lower()
-        assert "pass that location as the city argument" in tools_by_name["search_business"]["description"].lower()
-        assert "explicitly display the 10 masked samples" in tools_by_name["search_business"]["description"].lower()
+        assert "when a location is provided, pass it as the city argument" in tools_by_name["search_business"]["description"].lower()
+        assert "display all 10 masked samples" in tools_by_name["search_business"]["description"].lower()
         assert "do not call purchase_business" in tools_by_name["search_business"]["description"].lower()
         assert "purchase_business" in tools_by_name["search_business"]["description"]
         assert "recommended workflow" in tools_by_name["search_business"]["description"].lower()
         assert "search_business first" in tools_by_name["purchase_business"]["description"]
-        assert "do not call this tool before a search" in tools_by_name["purchase_business"]["description"].lower()
-        assert "one permission checkpoint" in tools_by_name["purchase_business"]["description"].lower()
+        assert "do not call this tool before the search workflow" in tools_by_name["purchase_business"]["description"].lower()
+        assert "count and permission" in tools_by_name["purchase_business"]["description"].lower()
         assert "never ask the user for it" in tools_by_name["purchase_business"]["description"].lower()
-        assert "do not ask permission again" in tools_by_name["purchase_business"]["description"].lower()
+        assert "do not call this tool before the search workflow" in tools_by_name["purchase_business"]["description"].lower()
         assert "copy this value exactly" in tools_by_name["purchase_business"]["inputSchema"]["properties"]["search_id"]["description"].lower()
+        assert "credits_deducted and credits_remaining" in tools_by_name["purchase_business"]["description"]
+        assert "how many records would you like to reveal" in tools_by_name["search_business"]["description"].lower()
+        assert "do you want to proceed" in tools_by_name["search_business"]["description"].lower()
 
         search_ids = []
         for request_id, tool_name, args in [

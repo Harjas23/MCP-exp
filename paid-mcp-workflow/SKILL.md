@@ -15,10 +15,10 @@ Use this workflow for the local or remote Data Axle MCP demo. Keep search and pu
    - `search_contact`: company name, industry, job title.
 2. Treat every filter as optional when the user did not provide it. In particular, do not require `city` for business searches, but preserve explicit locations: map phrases such as "in Ohio" to `city="Ohio"`.
 3. Display the search result to the user:
-   - 10 masked sample records.
+   - All 10 masked sample records.
    - Total matching-record count.
    - Aggregate insights calculated for the full result set, not only the 10 samples.
-4. Ask one combined question for the desired record count and permission. If the user clearly says "give me 20 records," treat that as both the quantity and permission; do not ask again.
+4. Ask: "How many records would you like to reveal? Each record will consume 1 credit per record. Do you want to proceed?"
 5. Do not call a purchase tool if the user has not provided both a quantity and permission.
 
 ## Purchase
@@ -28,7 +28,7 @@ Use this workflow for the local or remote Data Axle MCP demo. Keep search and pu
    - `search_id` from the search response.
    - `count` requested by the user.
    - `confirm=true`.
-3. Charge one credit per record returned. Purchase responses must report records returned, credits deducted, and credits remaining.
+3. Charge one credit per record returned. If at least one record is returned, explicitly show records returned, credits deducted, and credits remaining, including for partial results.
 4. If the request exceeds the balance, return only the credit-supported number of records and include the insufficient-credit message and top-up link.
 5. If the balance is zero, return no records and include the no-credits message and top-up link.
 
