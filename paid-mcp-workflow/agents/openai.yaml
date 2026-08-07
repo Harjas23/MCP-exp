@@ -1,0 +1,4 @@
+interface:
+  display_name: "Paid MCP Workflow"
+  short_description: "Run masked search and permission-gated record purchase workflows"
+  default_prompt: "Use the paid MCP search-to-purchase workflow with masked previews, aggregate insights, explicit permission, and credit-aware responses."

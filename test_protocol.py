@@ -37,13 +37,18 @@ def main() -> None:
         tools_by_name = {item["name"]: item for item in listed["result"]["tools"]}
         business_schema = tools_by_name["search_business"]["inputSchema"]
         assert business_schema["required"] == []
-        assert "city is not required" in business_schema["properties"]["city"]["description"].lower()
+        assert "omit city only when no location is provided" in business_schema["properties"]["city"]["description"].lower()
+        assert "pass that location as the city argument" in tools_by_name["search_business"]["description"].lower()
         assert "explicitly display the 10 masked samples" in tools_by_name["search_business"]["description"].lower()
         assert "do not call purchase_business" in tools_by_name["search_business"]["description"].lower()
         assert "purchase_business" in tools_by_name["search_business"]["description"]
         assert "recommended workflow" in tools_by_name["search_business"]["description"].lower()
         assert "search_business first" in tools_by_name["purchase_business"]["description"]
-        assert "do not call this tool unless the user gave explicit permission" in tools_by_name["purchase_business"]["description"].lower()
+        assert "do not call this tool before a search" in tools_by_name["purchase_business"]["description"].lower()
+        assert "one permission checkpoint" in tools_by_name["purchase_business"]["description"].lower()
+        assert "never ask the user for it" in tools_by_name["purchase_business"]["description"].lower()
+        assert "do not ask permission again" in tools_by_name["purchase_business"]["description"].lower()
+        assert "copy this value exactly" in tools_by_name["purchase_business"]["inputSchema"]["properties"]["search_id"]["description"].lower()
 
         search_ids = []
         for request_id, tool_name, args in [
@@ -59,13 +64,15 @@ def main() -> None:
             assert result["insights"]["scope"] == "all matching records, not only the masked previews"
             search_ids.append(result["search_id"])
 
-        # Permission gate, then three 20-record purchases exhaust 60 credits.
-        confirmation = payload(call(paid, 5, "tools/call", {"name": "purchase_business", "arguments": {"search_id": search_ids[0], "count": 20, "confirm": False}}))
+        # Permission gate, then a 15-record request returns the 5 credit-supported records.
+        confirmation = payload(call(paid, 5, "tools/call", {"name": "purchase_business", "arguments": {"search_id": search_ids[0], "count": 15, "confirm": False}}))
         assert confirmation["status"] == "confirmation_required"
-        for request_id, tool_name, search_id in [(6, "purchase_business", search_ids[0]), (7, "purchase_contact", search_ids[1]), (8, "purchase_consumer", search_ids[2])]:
-            result = payload(call(paid, request_id, "tools/call", {"name": tool_name, "arguments": {"search_id": search_id, "count": 20, "confirm": True}}))
-            assert result["records_returned"] == 20
-        exhausted = call(paid, 9, "tools/call", {"name": "purchase_business", "arguments": {"search_id": search_ids[0], "count": 1, "confirm": True}})
+        partial = payload(call(paid, 6, "tools/call", {"name": "purchase_business", "arguments": {"search_id": search_ids[0], "count": 15, "confirm": True}}))
+        assert partial["status"] == "partial_success"
+        assert partial["records_returned"] == 5
+        assert partial["credits_deducted"] == 5
+        assert partial["credits_remaining"] == 0
+        exhausted = call(paid, 7, "tools/call", {"name": "purchase_contact", "arguments": {"search_id": search_ids[1], "count": 1, "confirm": True}})
         assert exhausted["result"]["isError"] is True
         assert payload(exhausted)["status"] == "no_credits"
     finally:

@@ -2,7 +2,7 @@
 
 This workspace contains two dependency-free MCP servers for Claude Desktop:
 
-- `paid_server.py`: `search_business`, `search_consumer`, `search_contact`, and the three matching purchase tools. It starts with 60 credits and charges one credit per returned record.
+- `paid_server.py`: `search_business`, `search_consumer`, `search_contact`, and the three matching purchase tools. It starts with 5 credits and charges one credit per returned record.
 - `freemium_server.py`: `search_business` and `purchase_business`. Business records cannot be revealed until the user upgrades.
 - `paid_remote_server.py`: paid-only remote HTTP wrapper for Claude web/remote connector testing.
 
@@ -56,6 +56,6 @@ For the paid server, use these searches and then request 20 records for each:
 2. `search_contact` with `job_title=manager`.
 3. `search_consumer` with `income=more than 20000`.
 
-After three successful 20-record purchases, the 60 credits are exhausted. A subsequent purchase returns the no-credits error and top-up link.
+With 5 credits, requesting 15 records returns 5 records with an insufficient-credit message and top-up link. A subsequent purchase returns the no-credits error and top-up link.
 
 The purchase response includes `credits_deducted` and `credits_remaining`.
