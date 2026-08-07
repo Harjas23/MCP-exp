@@ -49,7 +49,9 @@ class PaidDemo:
 
     def search_business(self, arguments: dict[str, Any]) -> dict[str, Any]:
         name = _value(arguments, "business_name") or "Starbucks"
-        location = _value(arguments, "city") or "Ohio"
+        city = _value(arguments, "city")
+        state = _value(arguments, "state")
+        location = city or state or "Ohio"
         base = [
             ("Starbucks", "coffee", "starbucks.com", "100 Main Street, Columbus, OH", "contact@starbucks.com"),
             ("Starbucks Reserve", "coffee", "reserve.starbucks.com", "200 High Street, Cleveland, OH", "reserve@starbucks.com"),
@@ -80,6 +82,8 @@ class PaidDemo:
                 "scope": "all matching records, not only the masked previews",
                 "total_count": 20,
                 "matched_location": location,
+                "matched_city": city or None,
+                "matched_state": state or None,
                 "matched_name": name,
                 "sic_distribution": {"5812": 20},
                 "median_estimated_revenue": f"${median(revenue_values):.2f}M",
@@ -190,7 +194,8 @@ def build_server() -> StdioMCPServer:
         "business_name": {"type": "string", "description": "Optional business name, e.g. Starbucks."},
         "sic_code": {"type": "string", "description": "Optional SIC code filter."},
         "street": {"type": "string", "description": "Optional street filter."},
-        "city": {"type": "string", "description": "Optional city or location filter. If the user states a location such as 'in Ohio', pass that value here; omit city only when no location is provided."},
+        "city": {"type": "string", "description": "Optional city filter. Use this only when the user names a city."},
+        "state": {"type": "string", "description": "Optional state filter. Use this when the user names a state, such as Ohio."},
         "zip": {"type": "string", "description": "Optional ZIP code filter."},
         "revenue": {"type": "string", "description": "Optional revenue filter."},
     }
@@ -201,15 +206,15 @@ def build_server() -> StdioMCPServer:
     purchase_props = {
         "search_id": {"type": "string", "description": "Copy this value exactly from the immediately preceding matching search response. This is internal workflow state; never ask the user to provide it and never invent or transform it."},
         "count": {"type": "integer", "minimum": 1, "description": "Use the number requested by the user."},
-        "confirm": {"type": "boolean", "description": "Set true only after the user has provided the requested count and answered that they want to proceed."},
+        "confirm": {"type": "boolean", "description": "Set true when the user provides a number of records to reveal; the number is the permission signal. Do not ask a separate yes/no question."},
     }
     tools = [
-        tool("search_business", "Search businesses. All filters are optional, including city. Preserve every filter the user explicitly states: when a location is provided, pass it as the city argument; omit city only when no location is provided. The search never reveals full records. Recommended workflow: 1) Display all 10 masked samples to the user. 2) Show total matches and aggregate insights. 3) Ask: 'How many records would you like to reveal? Each record will consume 1 credit per record. Do you want to proceed?' 4) Do not call purchase_business until the user provides the count and permission. Then call it with the exact search_id returned by this search, the requested count, and confirm=true.", common_search),
-        tool("search_consumer", "Search consumers. All filters are optional. The search never reveals full records. Recommended workflow: 1) Display all 10 masked samples to the user. 2) Show total matches and aggregate insights. 3) Ask: 'How many records would you like to reveal? Each record will consume 1 credit per record. Do you want to proceed?' 4) Do not call purchase_consumer until the user provides the count and permission. Then call it with the exact search_id returned by this search, the requested count, and confirm=true.", consumer_search),
-        tool("search_contact", "Search contacts. All filters are optional. The search never reveals full records. Recommended workflow: 1) Display all 10 masked samples to the user. 2) Show total matches and aggregate insights. 3) Ask: 'How many records would you like to reveal? Each record will consume 1 credit per record. Do you want to proceed?' 4) Do not call purchase_contact until the user provides the count and permission. Then call it with the exact search_id returned by this search, the requested count, and confirm=true.", contact_search),
-        tool("purchase_business", "Workflow: call search_business first. Copy the exact search_id from that response; never ask the user for it, invent it, or transform it. Do not call this tool before the search workflow has received the user's count and permission. Then call with the requested count and confirm=true. If at least one record is returned, explicitly show credits_deducted and credits_remaining, including for partial results.", purchase_props, ["search_id", "count", "confirm"]),
-        tool("purchase_consumer", "Workflow: call search_consumer first. Copy the exact search_id from that response; never ask the user for it, invent it, or transform it. Do not call this tool before the search workflow has received the user's count and permission. Then call with the requested count and confirm=true. If at least one record is returned, explicitly show credits_deducted and credits_remaining, including for partial results.", purchase_props, ["search_id", "count", "confirm"]),
-        tool("purchase_contact", "Workflow: call search_contact first. Copy the exact search_id from that response; never ask the user for it, invent it, or transform it. Do not call this tool before the search workflow has received the user's count and permission. Then call with the requested count and confirm=true. If at least one record is returned, explicitly show credits_deducted and credits_remaining, including for partial results.", purchase_props, ["search_id", "count", "confirm"]),
+        tool("search_business", "Search businesses. All filters are optional. Preserve every filter the user explicitly states: map a named city to city, and map a named state such as Ohio to state; do not put a state in city. The search never reveals full records. Recommended workflow: 1) Display all 10 masked samples to the user. 2) Show total matches and aggregate insights. 3) Ask the user how many records they want to reveal and state that each record consumes 1 credit. 4) If the user provides a number, treat it as permission and call purchase_business with the exact search_id returned by this search, the requested count, and confirm=true. If the user does not provide a number, do not call purchase_business.", common_search),
+        tool("search_consumer", "Search consumers. All filters are optional. The search never reveals full records. Recommended workflow: 1) Display all 10 masked samples to the user. 2) Show total matches and aggregate insights. 3) Ask the user how many records they want to reveal and state that each record consumes 1 credit. 4) If the user provides a number, treat it as permission and call purchase_consumer with the exact search_id returned by this search, the requested count, and confirm=true. If the user does not provide a number, do not call purchase_consumer.", consumer_search),
+        tool("search_contact", "Search contacts. All filters are optional. The search never reveals full records. Recommended workflow: 1) Display all 10 masked samples to the user. 2) Show total matches and aggregate insights. 3) Ask the user how many records they want to reveal and state that each record consumes 1 credit. 4) If the user provides a number, treat it as permission and call purchase_contact with the exact search_id returned by this search, the requested count, and confirm=true. If the user does not provide a number, do not call purchase_contact.", contact_search),
+        tool("purchase_business", "Workflow: call search_business first. Copy the exact search_id from that response; never ask the user for it, invent it, or transform it. Do not call this tool unless the user provided a record count; the count is the permission signal. Then call with confirm=true. If at least one record is returned, explicitly show credits_deducted and credits_remaining, including for partial results.", purchase_props, ["search_id", "count", "confirm"]),
+        tool("purchase_consumer", "Workflow: call search_consumer first. Copy the exact search_id from that response; never ask the user for it, invent it, or transform it. Do not call this tool unless the user provided a record count; the count is the permission signal. Then call with confirm=true. If at least one record is returned, explicitly show credits_deducted and credits_remaining, including for partial results.", purchase_props, ["search_id", "count", "confirm"]),
+        tool("purchase_contact", "Workflow: call search_contact first. Copy the exact search_id from that response; never ask the user for it, invent it, or transform it. Do not call this tool unless the user provided a record count; the count is the permission signal. Then call with confirm=true. If at least one record is returned, explicitly show credits_deducted and credits_remaining, including for partial results.", purchase_props, ["search_id", "count", "confirm"]),
     ]
     return StdioMCPServer(
         name="paid-data-demo",

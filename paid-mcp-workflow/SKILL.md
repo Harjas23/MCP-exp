@@ -13,13 +13,13 @@ Use this workflow for the local or remote Data Axle MCP demo. Keep search and pu
    - `search_business`: business name, SIC code, street, city, ZIP, revenue.
    - `search_consumer`: city, state, name, income, age.
    - `search_contact`: company name, industry, job title.
-2. Treat every filter as optional when the user did not provide it. In particular, do not require `city` for business searches, but preserve explicit locations: map phrases such as "in Ohio" to `city="Ohio"`.
+2. Treat every filter as optional when the user did not provide it. For business searches, map a named city to `city` and a named state such as Ohio to `state`; do not put a state in `city`.
 3. Display the search result to the user:
    - All 10 masked sample records.
    - Total matching-record count.
    - Aggregate insights calculated for the full result set, not only the 10 samples.
-4. Ask: "How many records would you like to reveal? Each record will consume 1 credit per record. Do you want to proceed?"
-5. Do not call a purchase tool if the user has not provided both a quantity and permission.
+4. Ask how many records the user wants to reveal and state that each record consumes 1 credit. Treat a number as permission to proceed.
+5. If the user does not provide a number, do not call a purchase tool.
 
 ## Purchase
 
@@ -38,7 +38,7 @@ Use `search_business` first. If the user requests a reveal and gives permission,
 
 ## Query mapping examples
 
-- "Find me Starbucks in Ohio" -> `search_business` with `business_name="Starbucks"`, `city="Ohio"`.
+- "Find me Starbucks in Ohio" -> `search_business` with `business_name="Starbucks"`, `state="Ohio"`.
 - "Find me contacts working as managers" -> `search_contact` with `job_title="manager"`.
 - "Find consumers with income of more than 20K" -> `search_consumer` with `income="more than 20000"`.
 - "Give me 15 records" after a search -> purchase the matching search with `count=15`, but only after explicit permission is established.
