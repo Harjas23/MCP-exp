@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from statistics import median
 from typing import Any
 
 from server_common import StdioMCPServer, text_result, tool
@@ -46,7 +47,6 @@ class PaidDemo:
             "insights": insights,
             "credits_available": self.credits,
             "reveal_cost": "1 credit per record",
-            "next_step": "Ask the user how many records they want to reveal, then call the matching purchase tool with this search_id and confirm=true after user permission.",
         }
 
     def search_business(self, arguments: dict[str, Any]) -> dict[str, Any]:
@@ -71,12 +71,23 @@ class PaidDemo:
                 "email": template[4],
                 "website": template[2],
             })
+        revenue_values = [float(record["estimated_revenue"].removeprefix("$").removesuffix("M")) for record in records]
+        employee_values = [int(record["emp_size"]) for record in records]
         return self._new_search(
             "business",
             arguments,
             records,
             20,
-            {"matched_location": location, "matched_name": name, "sic_distribution": {"5812": 20}, "revenue_note": "Sample records span small to mid-sized locations."},
+            {
+                "scope": "all matching records, not only the masked previews",
+                "total_count": 20,
+                "matched_location": location,
+                "matched_name": name,
+                "sic_distribution": {"5812": 20},
+                "median_estimated_revenue": f"${median(revenue_values):.2f}M",
+                "median_employee_size": int(median(employee_values)),
+                "employee_size_range": f"{min(employee_values)}-{max(employee_values)}",
+            },
             ["name", "email", "website", "address"],
         )
 
@@ -88,7 +99,18 @@ class PaidDemo:
             {"name": f"Jordan Consumer {i + 1}", "age": str(25 + i), "income": f"${threshold + 5000 + i * 1500}", "email": f"consumer{i + 1}@example.com", "address": f"{10 + i} Broad Street, {city}, OH"}
             for i in range(20)
         ]
-        return self._new_search("consumer", arguments, records, 20, {"matched_city": city, "income_filter": income_filter, "minimum_income_used": threshold, "age_range": "25-44"}, ["name", "email", "address"])
+        income_values = [int(record["income"].removeprefix("$").replace(",", "")) for record in records]
+        age_values = [int(record["age"]) for record in records]
+        return self._new_search("consumer", arguments, records, 20, {
+            "scope": "all matching records, not only the masked previews",
+            "total_count": 20,
+            "matched_city": city,
+            "income_filter": income_filter,
+            "minimum_income_used": threshold,
+            "median_income": f"${int(median(income_values)):,}",
+            "income_range": f"${min(income_values):,}-${max(income_values):,}",
+            "age_range": f"{min(age_values)}-{max(age_values)}",
+        }, ["name", "email", "address"])
 
     def search_contact(self, arguments: dict[str, Any]) -> dict[str, Any]:
         job_title = _value(arguments, "job_title") or "manager"
@@ -97,7 +119,15 @@ class PaidDemo:
             {"name": f"Alex Manager {i + 1}", "business_name": f"Ohio Business {i + 1}", "sic_code": "5812", "job_title": job_title.title(), "email_address": f"manager{i + 1}@example.com"}
             for i in range(20)
         ]
-        return self._new_search("contact", arguments, records, 20, {"matched_company": company, "matched_job_title": job_title, "job_title_distribution": {job_title.title(): 20}}, ["name", "email_address", "business_name"])
+        return self._new_search("contact", arguments, records, 20, {
+            "scope": "all matching records, not only the masked previews",
+            "total_count": 20,
+            "matched_company": company,
+            "matched_job_title": job_title,
+            "job_title_distribution": {job_title.title(): 20},
+            "sic_distribution": {"5812": 20},
+            "businesses_represented": 20,
+        }, ["name", "email_address", "business_name"])
 
     def purchase(self, arguments: dict[str, Any], kind: str) -> dict[str, Any]:
         search_id = _value(arguments, "search_id")
@@ -159,22 +189,25 @@ class PaidDemo:
 def build_server() -> StdioMCPServer:
     demo = PaidDemo()
     common_search = {
-        "business_name": {"type": "string", "description": "Business name, e.g. Starbucks."},
-        "sic_code": {"type": "string", "description": "SIC code filter."},
-        "street": {"type": "string"}, "city": {"type": "string"}, "zip": {"type": "string"}, "revenue": {"type": "string"},
+        "business_name": {"type": "string", "description": "Optional business name, e.g. Starbucks."},
+        "sic_code": {"type": "string", "description": "Optional SIC code filter."},
+        "street": {"type": "string", "description": "Optional street filter."},
+        "city": {"type": "string", "description": "Optional city filter. City is not required."},
+        "zip": {"type": "string", "description": "Optional ZIP code filter."},
+        "revenue": {"type": "string", "description": "Optional revenue filter."},
     }
     consumer_search = {
-        "city": {"type": "string"}, "state": {"type": "string"}, "name": {"type": "string"}, "income": {"type": "string", "description": "Income filter, e.g. more than 20000."}, "age": {"type": "string"},
+        "city": {"type": "string", "description": "Optional city filter."}, "state": {"type": "string", "description": "Optional state filter."}, "name": {"type": "string", "description": "Optional consumer name filter."}, "income": {"type": "string", "description": "Optional income filter, e.g. more than 20000."}, "age": {"type": "string", "description": "Optional age filter."},
     }
-    contact_search = {"company_name": {"type": "string"}, "industry": {"type": "string"}, "job_title": {"type": "string"}}
+    contact_search = {"company_name": {"type": "string", "description": "Optional company name filter."}, "industry": {"type": "string", "description": "Optional industry filter."}, "job_title": {"type": "string", "description": "Optional job title filter."}}
     purchase_props = {"search_id": {"type": "string"}, "count": {"type": "integer", "minimum": 1}, "confirm": {"type": "boolean", "description": "Must be true only after the user gives permission to reveal records."}}
     tools = [
-        tool("search_business", "Search businesses. Returns 10 masked samples, total matches, insights, and current credits; it never reveals full records.", common_search),
-        tool("search_consumer", "Search consumers. Returns 10 masked samples, total matches, insights, and current credits; it never reveals full records.", consumer_search),
-        tool("search_contact", "Search contacts. Returns 10 masked samples, total matches, insights, and current credits; it never reveals full records.", contact_search),
-        tool("purchase_business", "Reveal business records from a prior search. Costs one credit per record and requires user permission via confirm=true.", purchase_props, ["search_id", "count", "confirm"]),
-        tool("purchase_consumer", "Reveal consumer records from a prior search. Costs one credit per record and requires user permission via confirm=true.", purchase_props, ["search_id", "count", "confirm"]),
-        tool("purchase_contact", "Reveal contact records from a prior search. Costs one credit per record and requires user permission via confirm=true.", purchase_props, ["search_id", "count", "confirm"]),
+        tool("search_business", "Search businesses. All filters are optional, including city. Returns masked previews, total matches, aggregate insights, and current credits; it never reveals full records. Workflow recommendation: after the search, ask the user how many records they want revealed and ask for explicit permission. Explain that one credit will be deducted per record. Only after the user provides the number and permission, call purchase_business with this search_id, the requested count, and confirm=true.", common_search),
+        tool("search_consumer", "Search consumers. All filters are optional. Returns masked previews, total matches, aggregate insights, and current credits; it never reveals full records. Workflow recommendation: after the search, ask the user how many records they want revealed and ask for explicit permission. Explain that one credit will be deducted per record. Only after the user provides the number and permission, call purchase_consumer with this search_id, the requested count, and confirm=true.", consumer_search),
+        tool("search_contact", "Search contacts. All filters are optional. Returns masked previews, total matches, aggregate insights, and current credits; it never reveals full records. Workflow recommendation: after the search, ask the user how many records they want revealed and ask for explicit permission. Explain that one credit will be deducted per record. Only after the user provides the number and permission, call purchase_contact with this search_id, the requested count, and confirm=true.", contact_search),
+        tool("purchase_business", "Workflow: call search_business first and use its returned search_id. Do not call this purchase tool without a prior search. After the user provides a record count and explicit permission, call this tool with confirm=true. It costs one credit per returned record and reports credits deducted and remaining.", purchase_props, ["search_id", "count", "confirm"]),
+        tool("purchase_consumer", "Workflow: call search_consumer first and use its returned search_id. Do not call this purchase tool without a prior search. After the user provides a record count and explicit permission, call this tool with confirm=true. It costs one credit per returned record and reports credits deducted and remaining.", purchase_props, ["search_id", "count", "confirm"]),
+        tool("purchase_contact", "Workflow: call search_contact first and use its returned search_id. Do not call this purchase tool without a prior search. After the user provides a record count and explicit permission, call this tool with confirm=true. It costs one credit per returned record and reports credits deducted and remaining.", purchase_props, ["search_id", "count", "confirm"]),
     ]
     return StdioMCPServer(
         name="paid-data-demo",

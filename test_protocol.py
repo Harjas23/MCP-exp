@@ -33,6 +33,16 @@ def start(script: str) -> subprocess.Popen[str]:
 def main() -> None:
     paid = start("paid_server.py")
     try:
+        listed = call(paid, 10, "tools/list")
+        tools_by_name = {item["name"]: item for item in listed["result"]["tools"]}
+        business_schema = tools_by_name["search_business"]["inputSchema"]
+        assert business_schema["required"] == []
+        assert "city is not required" in business_schema["properties"]["city"]["description"].lower()
+        assert "explicit permission" in tools_by_name["search_business"]["description"]
+        assert "purchase_business" in tools_by_name["search_business"]["description"]
+        assert "show the 10 masked samples" not in tools_by_name["search_business"]["description"].lower()
+        assert "search_business first" in tools_by_name["purchase_business"]["description"]
+
         search_ids = []
         for request_id, tool_name, args in [
             (2, "search_business", {"business_name": "Starbucks", "city": "Ohio"}),
@@ -42,6 +52,8 @@ def main() -> None:
             result = payload(call(paid, request_id, "tools/call", {"name": tool_name, "arguments": args}))
             assert len(result["masked_samples"]) == 10
             assert result["credits_available"] == 60
+            assert result["insights"]["total_count"] == result["total_matches"] == 20
+            assert result["insights"]["scope"] == "all matching records, not only the masked previews"
             search_ids.append(result["search_id"])
 
         # Permission gate, then three 20-record purchases exhaust 60 credits.
