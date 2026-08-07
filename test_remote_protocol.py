@@ -1,0 +1,65 @@
+"""Smoke-test the paid remote MCP HTTP wrapper."""
+
+from __future__ import annotations
+
+import json
+import subprocess
+import sys
+import time
+from pathlib import Path
+from urllib.request import Request, urlopen
+
+
+ROOT = Path(__file__).parent
+
+
+def post(url: str, message: dict, session_id: str | None = None) -> tuple[dict, str | None]:
+    headers = {"Content-Type": "application/json", "Accept": "application/json, text/event-stream"}
+    if session_id:
+        headers["Mcp-Session-Id"] = session_id
+    request = Request(url, data=json.dumps(message).encode(), headers=headers, method="POST")
+    with urlopen(request, timeout=5) as response:
+        body = response.read()
+        return json.loads(body), response.headers.get("Mcp-Session-Id")
+
+
+def tool_payload(response: dict) -> dict:
+    return json.loads(response["result"]["content"][0]["text"])
+
+
+def main() -> None:
+    port = "8765"
+    process = subprocess.Popen([sys.executable, str(ROOT / "paid_remote_server.py")], env={**__import__("os").environ, "PORT": port}, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    base = f"http://127.0.0.1:{port}"
+    try:
+        for _ in range(30):
+            try:
+                with urlopen(f"{base}/health", timeout=1) as response:
+                    assert response.status == 200
+                    break
+            except Exception:
+                time.sleep(0.1)
+        else:
+            raise AssertionError("Remote server did not start")
+
+        initialize, session = post(base + "/mcp", {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}})
+        assert initialize["result"]["serverInfo"]["name"] == "paid-data-demo"
+        assert session
+
+        search, session = post(base + "/mcp", {"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "search_business", "arguments": {"business_name": "Starbucks", "city": "Ohio"}}}, session)
+        search_data = tool_payload(search)
+        assert len(search_data["masked_samples"]) == 10
+
+        purchase, _ = post(base + "/mcp", {"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "purchase_business", "arguments": {"search_id": search_data["search_id"], "count": 1, "confirm": True}}}, session)
+        purchase_data = tool_payload(purchase)
+        assert purchase_data["records_returned"] == 1
+        assert purchase_data["credits_remaining"] == 59
+    finally:
+        process.terminate()
+        process.wait(timeout=5)
+
+    print("PASS: remote HTTP MCP wrapper")
+
+
+if __name__ == "__main__":
+    main()
