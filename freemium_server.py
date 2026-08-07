@@ -36,7 +36,7 @@ def build_server() -> StdioMCPServer:
     }
     purchase_props = {"search_id": {"type": "string"}, "count": {"type": "integer", "minimum": 1}}
     tools = [
-        tool("search_business", "Freemium business search. All filters are optional, including city. Returns masked previews, total matches, and aggregate insights. Workflow recommendation: after the search, ask the user how many records they want revealed and ask for permission to proceed. If the user provides a number and permission, call purchase_business with this search_id and count; it will return the Pro or Teams upgrade message.", search_props),
+        tool("search_business", "Freemium business search. All filters are optional, including city. The search never reveals full records. Recommended workflow: 1) Return the 10 masked samples to the user together with total matches and aggregate insights for the full result set. 2) Ask how many records the user wants revealed. 3) Ask for permission to proceed. 4) If the user provides a number and permission, call purchase_business with this search_id and count; it will return the Pro or Teams upgrade message.", search_props),
         tool("purchase_business", "Workflow: call search_business first and use its returned search_id. Do not call this purchase tool without a prior search. After the user provides a record count and permission, call this tool; it always returns an upgrade-required message with the Pro or Teams subscription link.", purchase_props, ["search_id", "count"]),
     ]
     return StdioMCPServer(name="freemium-data-demo", version="1.0.0", tools=tools, handlers={"search_business": demo.search_business, "purchase_business": demo.purchase_business})

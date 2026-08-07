@@ -40,7 +40,8 @@ def main() -> None:
         assert "city is not required" in business_schema["properties"]["city"]["description"].lower()
         assert "explicit permission" in tools_by_name["search_business"]["description"]
         assert "purchase_business" in tools_by_name["search_business"]["description"]
-        assert "show the 10 masked samples" not in tools_by_name["search_business"]["description"].lower()
+        assert "recommended workflow" in tools_by_name["search_business"]["description"].lower()
+        assert "return the 10 masked samples to the user" in tools_by_name["search_business"]["description"].lower()
         assert "search_business first" in tools_by_name["purchase_business"]["description"]
 
         search_ids = []
