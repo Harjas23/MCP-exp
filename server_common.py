@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import json
 import sys
+from pathlib import Path
 from typing import Any, Callable
 
 
 SERVER_PROTOCOL_VERSION = "2025-06-18"
 SUPPORTED_PROTOCOL_VERSIONS = {"2025-06-18", "2025-03-26", "2024-11-05"}
+WORKFLOW_RESOURCE_URI = "mcp://sales-genie/paid-mcp-workflow"
 
 
 def text_result(payload: dict[str, Any], *, is_error: bool = False) -> dict[str, Any]:
@@ -37,11 +39,15 @@ class StdioMCPServer:
         version: str,
         tools: list[dict[str, Any]],
         handlers: dict[str, Callable[[dict[str, Any]], dict[str, Any]]],
+        resources: list[dict[str, Any]] | None = None,
+        resource_contents: dict[str, str] | None = None,
     ) -> None:
         self.name = name
         self.version = version
         self.tools = tools
         self.handlers = handlers
+        self.resources = resources or []
+        self.resource_contents = resource_contents or {}
 
     def _handle(self, message: dict[str, Any]) -> dict[str, Any] | None:
         request_id = message.get("id")
@@ -60,7 +66,10 @@ class StdioMCPServer:
                 "id": request_id,
                 "result": {
                     "protocolVersion": negotiated_version,
-                    "capabilities": {"tools": {"listChanged": False}},
+                    "capabilities": {
+                        "tools": {"listChanged": False},
+                        "resources": {"listChanged": False} if self.resources else {},
+                    },
                     "serverInfo": {"name": self.name, "version": self.version},
                 },
             }
@@ -70,6 +79,27 @@ class StdioMCPServer:
 
         if method == "tools/list":
             return {"jsonrpc": "2.0", "id": request_id, "result": {"tools": self.tools}}
+
+        if method == "resources/list":
+            return {"jsonrpc": "2.0", "id": request_id, "result": {"resources": self.resources}}
+
+        if method == "resources/read":
+            uri = params.get("uri")
+            content = self.resource_contents.get(uri)
+            if content is None:
+                return rpc_error(request_id, -32602, f"Unknown resource URI: {uri}")
+            resource = next((item for item in self.resources if item.get("uri") == uri), {})
+            return {
+                "jsonrpc": "2.0",
+                "id": request_id,
+                "result": {
+                    "contents": [{
+                        "uri": uri,
+                        "mimeType": resource.get("mimeType", "text/plain"),
+                        "text": content,
+                    }]
+                },
+            }
 
         if method == "tools/call":
             tool_name = params.get("name")
@@ -124,3 +154,17 @@ def tool(name: str, description: str, properties: dict[str, Any], required: list
         "description": description,
         "inputSchema": schema(properties, required),
     }
+
+
+def workflow_resource() -> tuple[list[dict[str, Any]], dict[str, str]]:
+    """Expose the repository workflow skill through the MCP resources protocol."""
+    skill_path = Path(__file__).resolve().parent / "paid-mcp-workflow" / "SKILL.md"
+    content = skill_path.read_text(encoding="utf-8")
+    metadata = {
+        "uri": WORKFLOW_RESOURCE_URI,
+        "name": "paid-mcp-workflow",
+        "title": "Sales Genie MCP workflow",
+        "description": "Workflow rules for displaying masked samples, matching uploaded rows, permission, enrichment, credits, and freemium behavior.",
+        "mimeType": "text/markdown",
+    }
+    return [metadata], {WORKFLOW_RESOURCE_URI: content}

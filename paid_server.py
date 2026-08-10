@@ -6,7 +6,7 @@ import re
 from statistics import median
 from typing import Any
 
-from server_common import StdioMCPServer, text_result, tool
+from server_common import StdioMCPServer, text_result, tool, workflow_resource
 
 
 TOP_UP_URL = "https://teampitstop.wixsite.com/home"
@@ -94,6 +94,10 @@ def _match_label(kind: str) -> str:
     return {"business": "business", "consumer": "consumer", "contact": "contact"}[kind]
 
 
+def _verified_total(records: list[dict[str, Any]], flag: str) -> int:
+    return sum(1 for record in records if record.get(flag) is True)
+
+
 class PaidDemo:
     def __init__(self) -> None:
         self.credits = INITIAL_CREDITS
@@ -138,6 +142,9 @@ class PaidDemo:
                 "address": f"{100 + i} {street},{address_rest}",
                 "email": template[4],
                 "website": template[2],
+                "phone": f"614-555-{1000 + i:04d}",
+                "email_verified": i % 4 != 0,
+                "phone_verified": i % 5 != 0,
             })
         revenue_values = [float(record["estimated_revenue"].removeprefix("$").removesuffix("M")) for record in records]
         employee_values = [int(record["emp_size"]) for record in records]
@@ -157,6 +164,8 @@ class PaidDemo:
                 "median_estimated_revenue": f"${median(revenue_values):.2f}M",
                 "median_employee_size": int(median(employee_values)),
                 "employee_size_range": f"{min(employee_values)}-{max(employee_values)}",
+                "total_verified_emails": _verified_total(records, "email_verified"),
+                "total_verified_phone_numbers": _verified_total(records, "phone_verified"),
             },
             ["name", "email", "website", "address"],
         )
@@ -166,7 +175,7 @@ class PaidDemo:
         city = _value(arguments, "city") or "Columbus"
         threshold = _number_from_text(income_filter) or 20000
         records = [
-            {"name": f"Jordan Consumer {i + 1}", "age": str(25 + i), "income": f"${threshold + 5000 + i * 1500}", "email": f"consumer{i + 1}@example.com", "address": f"{10 + i} Broad Street, {city}, OH"}
+            {"name": f"Jordan Consumer {i + 1}", "age": str(25 + i), "income": f"${threshold + 5000 + i * 1500}", "email": f"consumer{i + 1}@example.com", "phone": f"614-555-{2000 + i:04d}", "email_verified": i % 5 != 0, "phone_verified": i % 4 != 0, "address": f"{10 + i} Broad Street, {city}, OH"}
             for i in range(20)
         ]
         income_values = [int(record["income"].removeprefix("$").replace(",", "")) for record in records]
@@ -180,13 +189,15 @@ class PaidDemo:
             "median_income": f"${int(median(income_values)):,}",
             "income_range": f"${min(income_values):,}-${max(income_values):,}",
             "age_range": f"{min(age_values)}-{max(age_values)}",
+            "total_verified_emails": _verified_total(records, "email_verified"),
+            "total_verified_phone_numbers": _verified_total(records, "phone_verified"),
         }, ["name", "email", "address"])
 
     def search_contact(self, arguments: dict[str, Any]) -> dict[str, Any]:
         job_title = _value(arguments, "job_title") or "manager"
         company = _value(arguments, "company_name") or "Any company"
         records = [
-            {"name": f"Alex Manager {i + 1}", "business_name": f"Ohio Business {i + 1}", "sic_code": "5812", "job_title": job_title.title(), "email_address": f"manager{i + 1}@example.com"}
+            {"name": f"Alex Manager {i + 1}", "business_name": f"Ohio Business {i + 1}", "sic_code": "5812", "job_title": job_title.title(), "email_address": f"manager{i + 1}@example.com", "phone": f"614-555-{3000 + i:04d}", "email_verified": i % 6 != 0, "phone_verified": i % 3 != 0}
             for i in range(20)
         ]
         return self._new_search("contact", arguments, records, 20, {
@@ -197,6 +208,8 @@ class PaidDemo:
             "job_title_distribution": {job_title.title(): 20},
             "sic_distribution": {"5812": 20},
             "businesses_represented": 20,
+            "total_verified_emails": _verified_total(records, "email_verified"),
+            "total_verified_phone_numbers": _verified_total(records, "phone_verified"),
         }, ["name", "email_address", "business_name"])
 
     def match(self, arguments: dict[str, Any], kind: str) -> dict[str, Any]:
@@ -390,6 +403,7 @@ class PaidDemo:
 
 def build_server() -> StdioMCPServer:
     demo = PaidDemo()
+    resources, resource_contents = workflow_resource()
     common_search = {
         "business_name": {"type": "string", "description": "Optional business name, e.g. Starbucks."},
         "sic_code": {"type": "string", "description": "Optional SIC code filter."},
@@ -433,9 +447,9 @@ def build_server() -> StdioMCPServer:
         "contact": "Enrich all matched contacts from a previous match_contact call, including primary and secondary contacts. Return name, business name, SIC code, job title, and email address.",
     }
     tools = [
-        tool("search_business", "Search businesses. All filters are optional. Preserve every filter the user explicitly states: map a named city to city, and map a named state such as Ohio to state; do not put a state in city. The search never reveals full records. Recommended workflow: 1) Display all 10 masked samples to the user. 2) Show total matches and aggregate insights. 3) Ask the user how many records they want to reveal and state that each record consumes 1 credit. 4) If the user provides a number, treat it as permission and call purchase_business with the exact search_id returned by this search, the requested count, and confirm=true. If the user does not provide a number, do not call purchase_business.", common_search),
-        tool("search_consumer", "Search consumers. All filters are optional. The search never reveals full records. Recommended workflow: 1) Display all 10 masked samples to the user. 2) Show total matches and aggregate insights. 3) Ask the user how many records they want to reveal and state that each record consumes 1 credit. 4) If the user provides a number, treat it as permission and call purchase_consumer with the exact search_id returned by this search, the requested count, and confirm=true. If the user does not provide a number, do not call purchase_consumer.", consumer_search),
-        tool("search_contact", "Search contacts. All filters are optional. The search never reveals full records. Recommended workflow: 1) Display all 10 masked samples to the user. 2) Show total matches and aggregate insights. 3) Ask the user how many records they want to reveal and state that each record consumes 1 credit. 4) If the user provides a number, treat it as permission and call purchase_contact with the exact search_id returned by this search, the requested count, and confirm=true. If the user does not provide a number, do not call purchase_contact.", contact_search),
+        tool("search_business", "Search businesses. All filters are optional. Preserve every filter the user explicitly states: map a named city to city, and map a named state such as Ohio to state; do not put a state in city. The search never reveals full records. Recommended workflow: MANDATORY RESPONSE ACTION: Display all 10 masked samples from the masked_samples field to the user exactly as returned; do not summarize, omit, or hide them. Then show total matches and aggregate insights. Ask the user how many records they want to reveal and state that each record consumes 1 credit. If the user provides a number, treat it as permission and call purchase_business with the exact search_id returned by this search, the requested count, and confirm=true. If the user does not provide a number, do not call purchase_business.", common_search),
+        tool("search_consumer", "Search consumers. All filters are optional. The search never reveals full records. Recommended workflow: MANDATORY RESPONSE ACTION: Display all 10 masked samples from the masked_samples field to the user exactly as returned; do not summarize, omit, or hide them. Then show total matches and aggregate insights. Ask the user how many records they want to reveal and state that each record consumes 1 credit. If the user provides a number, treat it as permission and call purchase_consumer with the exact search_id returned by this search, the requested count, and confirm=true. If the user does not provide a number, do not call purchase_consumer.", consumer_search),
+        tool("search_contact", "Search contacts. All filters are optional. The search never reveals full records. Recommended workflow: MANDATORY RESPONSE ACTION: Display all 10 masked samples from the masked_samples field to the user exactly as returned; do not summarize, omit, or hide them. Then show total matches and aggregate insights. Ask the user how many records they want to reveal and state that each record consumes 1 credit. If the user provides a number, treat it as permission and call purchase_contact with the exact search_id returned by this search, the requested count, and confirm=true. If the user does not provide a number, do not call purchase_contact.", contact_search),
         tool("purchase_business", "Workflow: call search_business first. Copy the exact search_id from that response; never ask the user for it, invent it, or transform it. Do not call this tool unless the user provided a record count; the count is the permission signal. Then call with confirm=true. If requested count exceeds available credits, return the insufficient-credit error with no records and ask whether to proceed with the available count or top up. Only reveal records after the user chooses the available count. If at least one record is returned, explicitly show credits_deducted and credits_remaining.", purchase_props, ["search_id", "count", "confirm"]),
         tool("purchase_consumer", "Workflow: call search_consumer first. Copy the exact search_id from that response; never ask the user for it, invent it, or transform it. Do not call this tool unless the user provided a record count; the count is the permission signal. Then call with confirm=true. If requested count exceeds available credits, return the insufficient-credit error with no records and ask whether to proceed with the available count or top up. Only reveal records after the user chooses the available count. If at least one record is returned, explicitly show credits_deducted and credits_remaining.", purchase_props, ["search_id", "count", "confirm"]),
         tool("purchase_contact", "Workflow: call search_contact first. Copy the exact search_id from that response; never ask the user for it, invent it, or transform it. Do not call this tool unless the user provided a record count; the count is the permission signal. Then call with confirm=true. If requested count exceeds available credits, return the insufficient-credit error with no records and ask whether to proceed with the available count or top up. Only reveal records after the user chooses the available count. If at least one record is returned, explicitly show credits_deducted and credits_remaining.", purchase_props, ["search_id", "count", "confirm"]),
@@ -464,6 +478,8 @@ def build_server() -> StdioMCPServer:
             "enrich_consumer": lambda args: demo.enrich(args, "consumer"),
             "enrich_contact": lambda args: demo.enrich(args, "contact"),
         },
+        resources=resources,
+        resource_contents=resource_contents,
     )
 
 

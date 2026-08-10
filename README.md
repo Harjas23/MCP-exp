@@ -8,7 +8,7 @@ This workspace contains two dependency-free MCP servers for Claude Desktop:
 
 The demo uses sample data only. All searches return 10 masked previews. Masking leaves the first two characters visible. Paid purchase and enrichment calls require `confirm=true` after the user provides a record count. If the paid balance is zero, no records are returned and the top-up link is shown. If a request is larger than the balance, the first call returns no records and offers the available count or top-up; a second call with the approved available count returns those records.
 
-Bulk matching accepts up to 100 rows parsed by Claude from an uploaded file. The MCP server validates required fields, reports matched and dropped rows, and returns a `match_id`. The corresponding enrichment tool uses that exact `match_id`. Matching itself does not consume credits; enrichment consumes one credit per returned record. Contact matching and enrichment include both primary and secondary contacts.
+Bulk matching accepts up to 100 rows parsed by Claude from an uploaded file. The MCP server validates required fields, reports matched and dropped rows, and returns a `match_id`. The corresponding enrichment tool uses that exact `match_id`. Matching itself does not consume credits; enrichment consumes one credit per returned record. Contact matching and enrichment include both primary and secondary contacts. Search insights include total verified email and phone-number counts for the full result set.
 
 Top-up and upgrade link: https://teampitstop.wixsite.com/home
 

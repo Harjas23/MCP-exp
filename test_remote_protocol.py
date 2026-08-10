@@ -66,9 +66,16 @@ def main() -> None:
         assert initialize["result"]["serverInfo"]["name"] == "paid-data-demo"
         assert session
 
+        resources, session = post(base + "/mcp", {"jsonrpc": "2.0", "id": 10, "method": "resources/list", "params": {}}, session)
+        resource_uri = resources["result"]["resources"][0]["uri"]
+        skill, session = post(base + "/mcp", {"jsonrpc": "2.0", "id": 11, "method": "resources/read", "params": {"uri": resource_uri}}, session)
+        assert "Display the search result to the user" in skill["result"]["contents"][0]["text"]
+
         search, session = post(base + "/mcp", {"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "search_business", "arguments": {"business_name": "Starbucks", "city": "Ohio"}}}, session)
         search_data = tool_payload(search)
         assert len(search_data["masked_samples"]) == 10
+        assert "total_verified_emails" in search_data["insights"]
+        assert "total_verified_phone_numbers" in search_data["insights"]
 
         purchase, _ = post(base + "/mcp", {"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "purchase_business", "arguments": {"search_id": search_data["search_id"], "count": 1, "confirm": True}}}, session)
         purchase_data = tool_payload(purchase)

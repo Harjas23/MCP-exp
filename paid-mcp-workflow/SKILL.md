@@ -17,7 +17,7 @@ Use this workflow for the local or remote Data Axle MCP demo. Keep search/match 
 3. Display the search result to the user:
    - All 10 masked sample records.
    - Total matching-record count.
-   - Aggregate insights calculated for the full result set, not only the 10 samples.
+   - Aggregate insights calculated for the full result set, not only the 10 samples, including `total_verified_emails` and `total_verified_phone_numbers`.
 4. Ask how many records the user wants to reveal and state that each record consumes 1 credit. Treat a number as permission to proceed.
 5. If the user does not provide a number, do not call a purchase tool.
 

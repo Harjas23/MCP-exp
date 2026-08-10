@@ -35,6 +35,11 @@ def main() -> None:
     try:
         listed = call(paid, 10, "tools/list")
         tools_by_name = {item["name"]: item for item in listed["result"]["tools"]}
+        resources = call(paid, 11, "resources/list")
+        assert resources["result"]["resources"][0]["name"] == "paid-mcp-workflow"
+        resource_uri = resources["result"]["resources"][0]["uri"]
+        skill = call(paid, 12, "resources/read", {"uri": resource_uri})
+        assert "Display the search result to the user" in skill["result"]["contents"][0]["text"]
         business_schema = tools_by_name["search_business"]["inputSchema"]
         assert business_schema["required"] == []
         assert "use this only when the user names a city" in business_schema["properties"]["city"]["description"].lower()
@@ -65,6 +70,8 @@ def main() -> None:
             assert "reveal_cost" not in result
             assert result["insights"]["total_count"] == result["total_matches"] == 20
             assert result["insights"]["scope"] == "all matching records, not only the masked previews"
+            assert 0 <= result["insights"]["total_verified_emails"] <= 20
+            assert 0 <= result["insights"]["total_verified_phone_numbers"] <= 20
             search_ids.append(result["search_id"])
 
         # Permission gate, then a 25-record request returns an error with no records.
