@@ -2,7 +2,7 @@
 
 This workspace contains two dependency-free MCP servers for Claude Desktop:
 
-- `paid_server.py`: `search_business`, `search_consumer`, `search_contact`, the three purchase tools, and bulk `match_*`/`enrich_*` tools. It starts with 5 credits and charges one credit per returned or enriched record.
+- `paid_server.py`: `search_business`, `search_consumer`, `search_contact`, the three purchase tools, and bulk `match_*`/`enrich_*` tools. It starts with 15 credits and charges one credit per returned or enriched record.
 - `freemium_server.py`: business search/purchase plus business match/enrich. Business records cannot be revealed or enriched until the user upgrades.
 - `paid_remote_server.py`: paid-only remote HTTP wrapper for Claude web/remote connector testing.
 
@@ -48,7 +48,7 @@ Restart Claude Desktop after saving the configuration.
 
 `paid_remote_server.py` and `freemium_remote_server.py` are the remote duplicates. They listen on Render's `PORT`, expose the MCP endpoint at `/mcp`, and expose `/health` for the service health check. `render.yaml` deploys both as separate Free web services.
 
-After deployment, use the paid service HTTPS URL ending in `/mcp` for the paid connector and the freemium service HTTPS URL ending in `/mcp` for the freemium connector in Claude web under Settings > Connectors > Add custom connector. The remote wrapper keeps the paid balance in process memory for this demo; a service restart or free-tier sleep resets the 5 credits.
+After deployment, use the paid service HTTPS URL ending in `/mcp` for the paid connector and the freemium service HTTPS URL ending in `/mcp` for the freemium connector in Claude web under Settings > Connectors > Add custom connector. The remote wrapper keeps the paid balance in process memory for this demo; a service restart or free-tier sleep resets the 15 credits.
 
 ## Demo sequence
 
@@ -58,7 +58,7 @@ For the paid server, use these searches and then request 20 records for each:
 2. `search_contact` with `job_title=manager`.
 3. `search_consumer` with `income=more than 20000`.
 
-With 5 credits, requesting 15 records first returns an insufficient-credit error with no records and offers the user a choice to proceed with 5 records or top up. If the user chooses 5, the next purchase returns 5 records with credits deducted and remaining. A subsequent purchase returns the no-credits error and top-up link.
+With 15 credits, requesting 25 records first returns an insufficient-credit error with no records and offers the user a choice to proceed with 15 records or top up. If the user chooses 15, the next purchase returns 15 records with credits deducted and remaining. A subsequent purchase returns the no-credits error and top-up link.
 
 The purchase and enrichment responses include `credits_deducted` and `credits_remaining` whenever at least one record is returned.
 

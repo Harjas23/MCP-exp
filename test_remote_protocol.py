@@ -73,7 +73,7 @@ def main() -> None:
         purchase, _ = post(base + "/mcp", {"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "purchase_business", "arguments": {"search_id": search_data["search_id"], "count": 1, "confirm": True}}}, session)
         purchase_data = tool_payload(purchase)
         assert purchase_data["records_returned"] == 1
-        assert purchase_data["credits_remaining"] == 4
+        assert purchase_data["credits_remaining"] == 14
     finally:
         process.terminate()
         process.wait(timeout=5)

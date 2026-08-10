@@ -67,20 +67,20 @@ def main() -> None:
             assert result["insights"]["scope"] == "all matching records, not only the masked previews"
             search_ids.append(result["search_id"])
 
-        # Permission gate, then a 15-record request returns an error with no records.
-        confirmation = payload(call(paid, 5, "tools/call", {"name": "purchase_business", "arguments": {"search_id": search_ids[0], "count": 15, "confirm": False}}))
+        # Permission gate, then a 25-record request returns an error with no records.
+        confirmation = payload(call(paid, 5, "tools/call", {"name": "purchase_business", "arguments": {"search_id": search_ids[0], "count": 25, "confirm": False}}))
         assert confirmation["status"] == "confirmation_required"
-        insufficient = call(paid, 6, "tools/call", {"name": "purchase_business", "arguments": {"search_id": search_ids[0], "count": 15, "confirm": True}})
+        insufficient = call(paid, 6, "tools/call", {"name": "purchase_business", "arguments": {"search_id": search_ids[0], "count": 25, "confirm": True}})
         insufficient_data = payload(insufficient)
         assert insufficient["result"]["isError"] is True
         assert insufficient_data["status"] == "insufficient_credits"
         assert insufficient_data["records"] == []
-        assert insufficient_data["available_records"] == 5
-        assert insufficient_data["credits_available"] == 5
-        approved = payload(call(paid, 7, "tools/call", {"name": "purchase_business", "arguments": {"search_id": search_ids[0], "count": 5, "confirm": True}}))
+        assert insufficient_data["available_records"] == 15
+        assert insufficient_data["credits_available"] == 15
+        approved = payload(call(paid, 7, "tools/call", {"name": "purchase_business", "arguments": {"search_id": search_ids[0], "count": 15, "confirm": True}}))
         assert approved["status"] == "success"
-        assert approved["records_returned"] == 5
-        assert approved["credits_deducted"] == 5
+        assert approved["records_returned"] == 15
+        assert approved["credits_deducted"] == 15
         assert approved["credits_remaining"] == 0
         exhausted = call(paid, 8, "tools/call", {"name": "purchase_contact", "arguments": {"search_id": search_ids[1], "count": 1, "confirm": True}})
         assert exhausted["result"]["isError"] is True
@@ -113,7 +113,7 @@ def main() -> None:
         business_enriched = payload(call(match_paid, 22, "tools/call", {"name": "enrich_business", "arguments": {"match_id": business_match["match_id"], "count": 1, "confirm": True}}))
         assert business_enriched["records_returned"] == 1
         assert business_enriched["credits_deducted"] == 1
-        assert business_enriched["credits_remaining"] == 4
+        assert business_enriched["credits_remaining"] == 14
         assert set(["name", "sic", "emp_size", "estimated_revenue", "address", "email"]).issubset(business_enriched["records"][0])
 
         consumer_rows = [
@@ -133,17 +133,17 @@ def main() -> None:
         assert contact_enriched["records_returned"] == 2
         assert contact_enriched["credits_deducted"] == 2
 
-        partial_rows = [{"record_id": f"C{i}", "full_name": f"Consumer {i}", "full_address": f"{i} Main Street, Columbus, OH"} for i in range(1, 4)]
+        partial_rows = [{"record_id": f"C{i}", "full_name": f"Consumer {i}", "full_address": f"{i} Main Street, Columbus, OH"} for i in range(1, 21)]
         partial_match = payload(call(match_paid, 26, "tools/call", {"name": "match_consumer", "arguments": {"records": partial_rows}}))
-        insufficient = call(match_paid, 27, "tools/call", {"name": "enrich_consumer", "arguments": {"match_id": partial_match["match_id"], "count": 3, "confirm": True}})
+        insufficient = call(match_paid, 27, "tools/call", {"name": "enrich_consumer", "arguments": {"match_id": partial_match["match_id"], "count": 20, "confirm": True}})
         assert insufficient["result"]["isError"] is True
         insufficient_data = payload(insufficient)
         assert insufficient_data["status"] == "insufficient_credits"
         assert insufficient_data["records"] == []
-        assert insufficient_data["available_records"] == 2
-        approved = payload(call(match_paid, 28, "tools/call", {"name": "enrich_consumer", "arguments": {"match_id": partial_match["match_id"], "count": 2, "confirm": True}}))
-        assert approved["records_returned"] == 2
-        assert approved["credits_deducted"] == 2
+        assert insufficient_data["available_records"] == 12
+        approved = payload(call(match_paid, 28, "tools/call", {"name": "enrich_consumer", "arguments": {"match_id": partial_match["match_id"], "count": 12, "confirm": True}}))
+        assert approved["records_returned"] == 12
+        assert approved["credits_deducted"] == 12
         assert approved["credits_remaining"] == 0
     finally:
         match_paid.terminate()

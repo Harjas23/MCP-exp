@@ -10,7 +10,7 @@ from server_common import StdioMCPServer, text_result, tool
 
 
 TOP_UP_URL = "https://teampitstop.wixsite.com/home"
-INITIAL_CREDITS = 5
+INITIAL_CREDITS = 15
 
 
 def _mask(value: str) -> str:
