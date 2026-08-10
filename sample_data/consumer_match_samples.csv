@@ -1,0 +1,11 @@
+record_id,first_name,last_name,full_name,full_address,city,state,zip,country,email,phone,age,income
+C001,Avery,Johnson,Avery Johnson,101 Main Street Columbus OH 43215,Columbus,OH,43215,US,avery.johnson@example.com,614-555-0201,34,62000
+C002,Mei,Chen,Mei Chen,220 Market Avenue Cleveland OH 44114,Cleveland,OH,44114,US,mei.chen@example.com,216-555-0202,41,78000
+C003,Jordan,Smith,Jordan Smith,75 Lake Road Cincinnati OH 45202,Cincinnati,OH,45202,US,jordan.smith@example.com,513-555-0203,29,54000
+C004,Samira,Patel,Samira Patel,44 River Boulevard Dayton OH 45402,Dayton,OH,45402,US,samira.patel@example.com,937-555-0204,37,91000
+C005,Diego,Garcia,Diego Garcia,812 High Street Athens OH 45701,Athens,OH,45701,US,diego.garcia@example.com,740-555-0205,46,67000
+C006,Noah,Williams,Noah Williams,9 Oak Street Toledo OH 43604,Toledo,OH,43604,US,noah.williams@example.com,419-555-0206,52,83000
+C007,Missing Last Name,,,300 Pearl Street Akron OH 44308,Akron,OH,44308,US,taylor@example.com,330-555-0207,31,59000
+C008,Missing Address,Lewis,Casey Lewis,,Columbus,OH,43215,US,casey.lewis@example.com,614-555-0208,28,51000
+C009,Missing Location,Reed,Harper Reed,55 Commerce Road,,,US,harper.reed@example.com,800-555-0209,39,72000
+C010,,,,700 Broad Street Dayton OH 45402,Dayton,OH,45402,US,noname@example.com,937-555-0210,44,68000

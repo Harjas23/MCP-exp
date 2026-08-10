@@ -2,11 +2,13 @@
 
 This workspace contains two dependency-free MCP servers for Claude Desktop:
 
-- `paid_server.py`: `search_business`, `search_consumer`, `search_contact`, and the three matching purchase tools. It starts with 5 credits and charges one credit per returned record.
-- `freemium_server.py`: `search_business` and `purchase_business`. Business records cannot be revealed until the user upgrades.
+- `paid_server.py`: `search_business`, `search_consumer`, `search_contact`, the three purchase tools, and bulk `match_*`/`enrich_*` tools. It starts with 5 credits and charges one credit per returned or enriched record.
+- `freemium_server.py`: business search/purchase plus business match/enrich. Business records cannot be revealed or enriched until the user upgrades.
 - `paid_remote_server.py`: paid-only remote HTTP wrapper for Claude web/remote connector testing.
 
-The demo uses sample data only. All searches return 10 masked previews. Masking leaves the first two characters visible. Paid purchase calls require `confirm=true` after user permission. If the paid balance is zero, no records are returned and the top-up link is shown. If a request is larger than the balance, only the credit-supported number of records is returned with an insufficient-credit message.
+The demo uses sample data only. All searches return 10 masked previews. Masking leaves the first two characters visible. Paid purchase and enrichment calls require `confirm=true` after the user provides a record count. If the paid balance is zero, no records are returned and the top-up link is shown. If a request is larger than the balance, the first call returns no records and offers the available count or top-up; a second call with the approved available count returns those records.
+
+Bulk matching accepts up to 100 rows parsed by Claude from an uploaded file. The MCP server validates required fields, reports matched and dropped rows, and returns a `match_id`. The corresponding enrichment tool uses that exact `match_id`. Matching itself does not consume credits; enrichment consumes one credit per returned record. Contact matching and enrichment include both primary and secondary contacts.
 
 Top-up and upgrade link: https://teampitstop.wixsite.com/home
 
@@ -52,10 +54,23 @@ After deployment, use the paid service HTTPS URL ending in `/mcp` for the paid c
 
 For the paid server, use these searches and then request 20 records for each:
 
-1. `search_business` with `business_name=Starbucks`, `city=Ohio`.
+1. `search_business` with `business_name=Starbucks`, `state=Ohio`.
 2. `search_contact` with `job_title=manager`.
 3. `search_consumer` with `income=more than 20000`.
 
-With 5 credits, requesting 15 records returns 5 records with an insufficient-credit message and top-up link. A subsequent purchase returns the no-credits error and top-up link.
+With 5 credits, requesting 15 records first returns an insufficient-credit error with no records and offers the user a choice to proceed with 5 records or top up. If the user chooses 5, the next purchase returns 5 records with credits deducted and remaining. A subsequent purchase returns the no-credits error and top-up link.
 
-The purchase response includes `credits_deducted` and `credits_remaining`.
+The purchase and enrichment responses include `credits_deducted` and `credits_remaining` whenever at least one record is returned.
+
+## Bulk match/enrich sequence
+
+1. Upload one of the CSV samples to Claude and ask for details for the uploaded records.
+2. Claude passes the parsed rows to `match_business`, `match_consumer`, or `match_contact`.
+3. The match tool validates required fields and returns matched and dropped counts plus a `match_id`.
+4. After the user gives a record count as permission, Claude calls the corresponding `enrich_*` tool with the exact `match_id`, count, and `confirm=true`.
+
+Sample files:
+
+- `sample_data/business_match_samples.csv`
+- `sample_data/consumer_match_samples.csv`
+- `sample_data/contact_match_samples.csv`

@@ -1,0 +1,11 @@
+record_id,business_name,street,city,state,zip,country,website,email,phone
+B001,Starbucks Downtown,100 Main Street,Columbus,OH,43215,US,https://starbucks.example.com,downtown@starbucks.example.com,614-555-0101
+B002,Acme Industrial Supply,225 Market Avenue,Cleveland,OH,44114,US,https://acme.example.com,info@acme.example.com,216-555-0102
+B003,Bluebird Health Services,780 Lake Road,Cincinnati,OH,45202,US,https://bluebird.example.com,hello@bluebird.example.com,513-555-0103
+B004,Greenfield Logistics,45 River Boulevard,Dayton,OH,45402,US,https://greenfield.example.com,contact@greenfield.example.com,937-555-0104
+B005,Northstar Design Studio,910 High Street,Athens,OH,45701,US,https://northstar.example.com,studio@northstar.example.com,740-555-0105
+B006,Missing Address Business,,Toledo,OH,43604,US,https://missing-address.example.com,hello@missing-address.example.com,419-555-0106
+B007,,800 Pearl Street,Akron,OH,44308,US,https://missing-name.example.com,info@missing-name.example.com,330-555-0107
+B008,No Contact Business,18 Oak Street,Mansfield,OH,44902,US,,,419-555-0108
+B009,Incomplete Location Business,55 Commerce Road,,,US,https://incomplete-location.example.com,info@incomplete-location.example.com,800-555-0109
+B010,No Match Fields,,,,,,,

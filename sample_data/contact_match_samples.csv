@@ -1,0 +1,11 @@
+record_id,contact_first_name,contact_last_name,job_title,business_name,business_full_address,contact_type,email,phone
+T001,Olivia,Martin,General Manager,Starbucks Downtown,100 Main Street Columbus OH 43215,primary,olivia.martin@example.com,614-555-0301
+T002,Liam,Anderson,Operations Manager,Acme Industrial Supply,225 Market Avenue Cleveland OH 44114,secondary,liam.anderson@example.com,216-555-0302
+T003,Emma,Thompson,Sales Director,Bluebird Health Services,780 Lake Road Cincinnati OH 45202,primary,emma.thompson@example.com,513-555-0303
+T004,Noah,Wilson,Office Manager,Greenfield Logistics,45 River Boulevard Dayton OH 45402,secondary,noah.wilson@example.com,937-555-0304
+T005,Sophia,Lee,Managing Partner,Northstar Design Studio,910 High Street Athens OH 45701,primary,sophia.lee@example.com,740-555-0305
+T006,Ethan,Clark,Account Manager,Maple Financial Group,18 Oak Street Toledo OH 43604,secondary,ethan.clark@example.com,419-555-0306
+T007,Missing Title,Garner,,Riverbend Manufacturing,55 Commerce Road Akron OH 44308,secondary,missing.title@example.com,330-555-0307
+T008,Missing Business,Howard,Customer Success Manager,,77 Pearl Street Columbus OH 43215,primary,missing.business@example.com,614-555-0308
+T009,Missing Address,Moore,Regional Manager,Harbor Retail Group,,secondary,missing.address@example.com,216-555-0309
+T010,Missing,,Account Executive,Summit Services,12 Broad Street Dayton OH 45402,primary,missing.last@example.com,937-555-0310
