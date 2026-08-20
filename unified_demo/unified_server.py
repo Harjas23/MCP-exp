@@ -386,7 +386,100 @@ def _demo_guide() -> str:
 
 def _login_html(action: str, hidden: dict[str, str] | None = None, message: str = "") -> str:
     fields = "".join(f'<input type="hidden" name="{html.escape(key)}" value="{html.escape(value)}">' for key, value in (hidden or {}).items())
-    return f"""<!doctype html><html><head><title>Sales Genie Demo Login</title><style>body{{font-family:Arial;max-width:720px;margin:40px auto;padding:0 20px}}input{{display:block;margin:8px 0;padding:9px;width:280px}}button{{padding:10px 16px}}code{{background:#f2f2f2;padding:12px;display:block}}</style></head><body><h1>Sales Genie MCP Demo</h1><p>{html.escape(message)}</p><h2>Sign in</h2><form method="post" action="{html.escape(action)}">{fields}<input name="username" placeholder="Email" required><input name="password" type="password" placeholder="Password" required><button type="submit">Sign in</button></form><h2>Demo users</h2><p>Paid: <code>paid@example.com / paid-demo</code></p><p>Freemium: <code>freemium@example.com / freemium-demo</code></p><h2>Try this prompt</h2><p>Copy into Claude after signing in:</p><code>{html.escape(_demo_guide())}</code></body></html>"""
+    prompt = html.escape(_demo_guide(), quote=True)
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sales Genie | HSB demo</title>
+  <style>
+    :root {{ --ink:#172033; --muted:#667085; --line:#e7eaf0; --blue:#315efb; --blue-dark:#2448c8; --lavender:#eef2ff; }}
+    * {{ box-sizing:border-box; }}
+    body {{ margin:0; min-height:100vh; color:var(--ink); font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:linear-gradient(135deg,#f7f9ff 0%,#ffffff 48%,#eef3ff 100%); }}
+    .shell {{ width:min(1080px,calc(100% - 40px)); margin:0 auto; padding:28px 0 48px; }}
+    .brand {{ display:flex; align-items:center; gap:12px; margin-bottom:28px; font-weight:750; letter-spacing:-.02em; }}
+    .mark {{ width:42px; height:42px; display:grid; place-items:center; border-radius:13px; color:#fff; font-size:14px; letter-spacing:.08em; background:linear-gradient(145deg,#315efb,#7b61ff); box-shadow:0 8px 18px rgba(49,94,251,.24); }}
+    .brand span {{ font-size:18px; }}
+    .grid {{ display:grid; grid-template-columns:1.08fr .92fr; gap:22px; align-items:stretch; }}
+    .card {{ background:rgba(255,255,255,.9); border:1px solid rgba(231,234,240,.95); border-radius:24px; box-shadow:0 22px 60px rgba(31,49,93,.09); }}
+    .welcome {{ position:relative; overflow:hidden; padding:48px; background:linear-gradient(145deg,#172449 0%,#263b7c 58%,#315efb 100%); color:#fff; }}
+    .welcome:after {{ content:""; position:absolute; width:230px; height:230px; right:-80px; bottom:-100px; border:34px solid rgba(255,255,255,.11); border-radius:50%; }}
+    .eyebrow {{ color:#b9c7ff; font-size:12px; font-weight:750; letter-spacing:.14em; text-transform:uppercase; }}
+    h1 {{ max-width:440px; margin:16px 0 16px; font-size:clamp(34px,5vw,54px); line-height:1.02; letter-spacing:-.055em; }}
+    .lead {{ max-width:450px; margin:0; color:#d9e1ff; font-size:17px; line-height:1.6; }}
+    .chips {{ display:flex; flex-wrap:wrap; gap:9px; margin-top:30px; }}
+    .chip {{ padding:8px 11px; color:#e8edff; border:1px solid rgba(255,255,255,.2); border-radius:999px; font-size:12px; background:rgba(255,255,255,.09); }}
+    .login {{ padding:34px; }}
+    .login h2 {{ margin:0 0 8px; font-size:25px; letter-spacing:-.03em; }}
+    .subtle {{ margin:0 0 24px; color:var(--muted); font-size:14px; line-height:1.5; }}
+    .notice {{ margin:0 0 16px; padding:10px 12px; color:#805b00; border:1px solid #f5df9a; border-radius:12px; background:#fff9e8; font-size:13px; }}
+    label {{ display:block; margin:16px 0 7px; font-size:12px; font-weight:700; color:#475467; }}
+    input {{ width:100%; padding:13px 14px; border:1px solid #dfe3eb; border-radius:12px; color:var(--ink); font:inherit; outline:none; background:#fff; }}
+    input:focus {{ border-color:var(--blue); box-shadow:0 0 0 4px rgba(49,94,251,.1); }}
+    .primary {{ width:100%; margin-top:21px; padding:13px 16px; border:0; border-radius:12px; color:#fff; font:inherit; font-weight:750; cursor:pointer; background:var(--blue); box-shadow:0 8px 16px rgba(49,94,251,.2); }}
+    .primary:hover {{ background:var(--blue-dark); }}
+    .demo {{ display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-top:20px; }}
+    .demo div {{ padding:11px; border:1px solid var(--line); border-radius:12px; background:#fafbff; }}
+    .demo strong {{ display:block; margin-bottom:4px; font-size:12px; }}
+    .demo code {{ color:#4d5c78; font-size:11px; word-break:break-word; }}
+    .prompt {{ margin-top:22px; padding:16px; border:1px solid #dce4ff; border-radius:16px; background:var(--lavender); }}
+    .prompt-head {{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px; }}
+    .prompt-head strong {{ font-size:13px; }}
+    .copy {{ padding:7px 10px; border:1px solid #c8d4ff; border-radius:8px; color:#264bc9; font-size:12px; font-weight:700; cursor:pointer; background:#fff; }}
+    .copy:hover {{ background:#f7f9ff; }}
+    .prompt-text {{ margin:0; color:#34446e; font-size:12px; line-height:1.55; white-space:normal; }}
+    .status {{ min-height:16px; margin:7px 0 0; color:#2e7d5b; font-size:11px; }}
+    footer {{ margin-top:20px; color:#8a94a7; text-align:center; font-size:11px; }}
+    @media (max-width:780px) {{ .shell {{ width:min(100% - 24px,560px); padding-top:18px; }} .grid {{ grid-template-columns:1fr; }} .welcome {{ padding:34px 28px; }} .login {{ padding:28px; }} .welcome h1 {{ font-size:42px; }} }}
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <div class="brand"><div class="mark">HSB</div><span>Sales Genie MCP</span></div>
+    <section class="grid">
+      <div class="card welcome">
+        <div class="eyebrow">HSB data experience</div>
+        <h1>Explore the right data, with permission.</h1>
+        <p class="lead">A safe MCP demo for masked search, credit-aware reveal, and enrichment of your own business, consumer, and contact records.</p>
+        <div class="chips"><span class="chip">Masked previews</span><span class="chip">Paid + freemium</span><span class="chip">Claude-ready</span></div>
+      </div>
+      <div class="card login">
+        <h2>Sign in to the demo</h2>
+        <p class="subtle">Choose a demo account to test its exact MCP behavior.</p>
+        {f'<p class="notice">{html.escape(message)}</p>' if message else ''}
+        <form method="post" action="{html.escape(action)}">
+          {fields}
+          <label for="username">Email</label>
+          <input id="username" name="username" type="email" placeholder="you@example.com" autocomplete="username" required>
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" placeholder="Enter demo password" autocomplete="current-password" required>
+          <button class="primary" type="submit">Continue to Sales Genie</button>
+        </form>
+        <div class="demo"><div><strong>Paid demo</strong><code>paid@example.com<br>paid-demo</code></div><div><strong>Freemium demo</strong><code>freemium@example.com<br>freemium-demo</code></div></div>
+        <div class="prompt"><div class="prompt-head"><strong>Try this prompt in Claude</strong><button class="copy" id="copyButton" type="button" onclick="copyPrompt()">Copy prompt</button></div><p class="prompt-text" id="prompt">{prompt}</p><p class="status" id="copyStatus" aria-live="polite"></p></div>
+      </div>
+    </section>
+    <footer>HSB · Sales Genie MCP demonstration environment</footer>
+  </main>
+  <script>
+    function showCopied() {{
+      document.getElementById("copyButton").textContent = "Copied";
+      document.getElementById("copyStatus").textContent = "Prompt copied to your clipboard.";
+      window.setTimeout(function () {{ document.getElementById("copyButton").textContent = "Copy prompt"; }}, 1800);
+    }}
+    function fallbackCopy(text) {{
+      var area = document.createElement("textarea"); area.value = text; document.body.appendChild(area); area.select();
+      try {{ document.execCommand("copy"); showCopied(); }} catch (error) {{ document.getElementById("copyStatus").textContent = "Select and copy the prompt manually."; }}
+      document.body.removeChild(area);
+    }}
+    function copyPrompt() {{
+      var text = document.getElementById("prompt").innerText;
+      if (navigator.clipboard && window.isSecureContext) {{ navigator.clipboard.writeText(text).then(showCopied).catch(function () {{ fallbackCopy(text); }}); }} else {{ fallbackCopy(text); }}
+    }}
+  </script>
+</body>
+</html>"""
 
 
 class Handler(BaseHTTPRequestHandler):
