@@ -34,6 +34,7 @@ DEMO_USERS = {
     "paid@example.com": {"password": "paid-demo", "plan": "paid", "display_name": "Paid Demo User"},
     "freemium@example.com": {"password": "freemium-demo", "plan": "freemium", "display_name": "Freemium Demo User"},
 }
+ALLOWED_OAUTH_REDIRECT_URIS = {"https://claude.ai/api/mcp/auth_callback"}
 
 
 def _json(payload: Any) -> bytes:
@@ -384,6 +385,15 @@ def _demo_guide() -> str:
     return "Using HSB MCP, find me Starbucks in Ohio and show me the masked samples, total count, and insights."
 
 
+def _demo_user(username: str) -> tuple[str, dict[str, str]] | None:
+    """Accept the exact email or a friendly paid/freemium alias for the demo."""
+    normalized = username.strip().lower()
+    aliases = {"paid": "paid@example.com", "paid user": "paid@example.com", "freemium": "freemium@example.com", "freemium user": "freemium@example.com"}
+    email = aliases.get(normalized, normalized)
+    user = DEMO_USERS.get(email)
+    return (email, user) if user else None
+
+
 def _login_html(action: str, hidden: dict[str, str] | None = None, message: str = "") -> str:
     fields = "".join(f'<input type="hidden" name="{html.escape(key)}" value="{html.escape(value)}">' for key, value in (hidden or {}).items())
     prompt = html.escape(_demo_guide(), quote=True)
@@ -557,10 +567,11 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         parsed = urlparse(self.path)
         if parsed.path == "/login":
-            form = self.form(); user = DEMO_USERS.get(form.get("username", ""))
-            if not user or user["password"] != form.get("password"):
+            form = self.form(); identity = _demo_user(form.get("username", ""))
+            if not identity or identity[1]["password"] != form.get("password"):
                 self.send_bytes(401, _login_html("/login", message="Invalid demo credentials.").encode(), "text/html; charset=utf-8"); return
-            token = _issue_token(form["username"])
+            email, user = identity
+            token = _issue_token(email)
             self.send_bytes(200, (f"<html><body><h1>Signed in</h1><p>Plan: {html.escape(user['plan'])}</p><p>Use this bearer token for local testing:</p><code>{html.escape(token)}</code><h2>Prompt</h2><code>{html.escape(_demo_guide())}</code></body></html>").encode(), "text/html; charset=utf-8"); return
         if parsed.path == "/oauth/register":
             try: request = json.loads(self.body())
@@ -569,14 +580,26 @@ class Handler(BaseHTTPRequestHandler):
             OAUTH_CLIENTS[client_id] = {"redirect_uris": request.get("redirect_uris", []), "client_secret": secrets.token_urlsafe(24), "token_endpoint_auth_method": request.get("token_endpoint_auth_method", "none")}
             self.send_json(201, {"client_id": client_id, "client_secret": OAUTH_CLIENTS[client_id]["client_secret"], "redirect_uris": request.get("redirect_uris", [])}); return
         if parsed.path == "/oauth/authorize":
-            form = self.form(); client = OAUTH_CLIENTS.get(form.get("client_id", "")); user = DEMO_USERS.get(form.get("username", ""))
-            if not client or not user or user["password"] != form.get("password"):
-                self.send_bytes(401, _login_html("/oauth/authorize", form, "Invalid client or demo credentials.").encode(), "text/html; charset=utf-8"); return
+            form = self.form()
             redirect_uri = form.get("redirect_uri", "")
+            client_id = form.get("client_id", "")
+            client = OAUTH_CLIENTS.get(client_id)
+            if client is None and client_id.startswith("client_") and redirect_uri in ALLOWED_OAUTH_REDIRECT_URIS:
+                # Claude may reuse a dynamic client ID after a Render restart.
+                client = {"redirect_uris": [redirect_uri], "client_secret": "", "token_endpoint_auth_method": "none"}
+                OAUTH_CLIENTS[client_id] = client
+            identity = _demo_user(form.get("username", ""))
+            if client is None:
+                self.send_bytes(401, _login_html("/oauth/authorize", form, "This Claude sign-in session has expired. Close the connector login and start it again.").encode(), "text/html; charset=utf-8"); return
+            if not identity:
+                self.send_bytes(401, _login_html("/oauth/authorize", form, "Use paid@example.com / paid-demo or freemium@example.com / freemium-demo.").encode(), "text/html; charset=utf-8"); return
+            email, user = identity
+            if user["password"] != form.get("password"):
+                self.send_bytes(401, _login_html("/oauth/authorize", form, "The demo password is incorrect. Paid uses paid-demo; freemium uses freemium-demo.").encode(), "text/html; charset=utf-8"); return
             if redirect_uri not in client["redirect_uris"]:
                 self.send_json(400, {"error": "invalid_request", "error_description": "redirect_uri is not registered"}); return
             code = secrets.token_urlsafe(32)
-            AUTH_CODES[code] = {"client_id": form["client_id"], "redirect_uri": redirect_uri, "challenge": form.get("code_challenge", ""), "method": form.get("code_challenge_method", "S256"), "email": form["username"]}
+            AUTH_CODES[code] = {"client_id": client_id, "redirect_uri": redirect_uri, "challenge": form.get("code_challenge", ""), "method": form.get("code_challenge_method", "S256"), "email": email}
             location = redirect_uri + ("&" if "?" in redirect_uri else "?") + urlencode({"code": code, "state": form.get("state", "")})
             self.send_bytes(302, b"", headers={"Location": location}); return
         if parsed.path == "/oauth/token":
