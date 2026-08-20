@@ -38,6 +38,12 @@ def main() -> None:
     assert "user brings their own uploaded records" in enrich_description
     assert "no separate match tool" in enrich_description
 
+    prompts = rpc(paid_token, 30, "prompts/list")["result"]["prompts"]
+    prompt_names = {prompt["name"] for prompt in prompts}
+    assert {"business_search", "contact_search", "consumer_search", "business_enrichment", "consumer_enrichment", "contact_enrichment", "partial_credit_test"} == prompt_names
+    prompt = rpc(paid_token, 31, "prompts/get", {"name": "business_search"})
+    assert "Show all 10 masked samples" in prompt["result"]["messages"][0]["content"]["text"]
+
     resources = rpc(paid_token, 3, "resources/list")["result"]["resources"]
     assert resources[0]["uri"] == "mcp://hsb/unified-auth-enrichment-workflow"
     resource = rpc(paid_token, 4, "resources/read", {"uri": resources[0]["uri"]})

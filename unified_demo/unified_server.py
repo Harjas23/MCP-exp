@@ -142,6 +142,7 @@ class UnifiedMCP:
         self.states: dict[str, DemoState] = {}
         self.lock = threading.Lock()
         self.tools = self._tools()
+        self.prompts = self._prompts()
 
     def state_for(self, token: str) -> DemoState:
         with self.lock:
@@ -327,6 +328,33 @@ class UnifiedMCP:
             _tool("enrich_contact", enrich_desc + " Return all contacts, including secondary contacts, with name, business name, SIC code, job title, and email address.", enrich, []),
         ]
 
+    @staticmethod
+    def _prompts() -> list[dict[str, Any]]:
+        return [
+            {"name": "business_search", "title": "Business search demo", "description": "Find Starbucks in Ohio and display masked samples and insights."},
+            {"name": "contact_search", "title": "Contact search demo", "description": "Find manager contacts and display masked samples and insights."},
+            {"name": "consumer_search", "title": "Consumer search demo", "description": "Find consumers with income above 20K and display masked samples and insights."},
+            {"name": "business_enrichment", "title": "Business enrichment from uploaded data", "description": "Enrich the user's uploaded business rows with permission and credit validation."},
+            {"name": "consumer_enrichment", "title": "Consumer enrichment from uploaded data", "description": "Enrich the user's uploaded consumer rows with permission and credit validation."},
+            {"name": "contact_enrichment", "title": "Contact enrichment from uploaded data", "description": "Enrich all matching uploaded contacts, including secondary contacts, with permission and credit validation."},
+            {"name": "partial_credit_test", "title": "Partial-credit test", "description": "Request more records than the paid user's remaining credits to test the two-step partial-credit flow."},
+        ]
+
+    @staticmethod
+    def _prompt_text(name: str) -> str:
+        prompts = {
+            "business_search": "Find me Starbucks in Ohio. Show all 10 masked samples, total matches, and full-result insights. Then ask how many records I want to reveal.",
+            "contact_search": "Find me contacts working as managers. Show all 10 masked samples and full-result insights. Then ask how many records I want to reveal.",
+            "consumer_search": "Find me consumers with income of more than 20K. Show all 10 masked samples and full-result insights. Then ask how many records I want to reveal.",
+            "business_enrichment": "I uploaded my business records. Use only my uploaded rows with the business enrichment tool. First return matched and non-matched counts, then ask how many matched records I want to enrich. Do not enrich until I provide the number.",
+            "consumer_enrichment": "I uploaded my consumer records. Use only my uploaded rows with the consumer enrichment tool. First return matched and non-matched counts, then ask how many matched records I want to enrich. Do not enrich until I provide the number.",
+            "contact_enrichment": "I uploaded my contact records. Use only my uploaded rows with the contact enrichment tool. Include primary and secondary contacts. First return matched and non-matched counts, then ask how many matched records I want to enrich. Do not enrich until I provide the number.",
+            "partial_credit_test": "Request 25 records and follow the paid partial-credit flow. If the server says I can reveal only the remaining credit balance, wait for me to say go ahead with that number before calling the tool again.",
+        }
+        if name not in prompts:
+            raise ValueError(f"Unknown prompt: {name}")
+        return prompts[name]
+
     def call(self, token: str, message: dict[str, Any]) -> dict[str, Any] | None:
         state = self.state_for(token)
         request_id = message.get("id")
@@ -336,7 +364,7 @@ class UnifiedMCP:
             return None
         if method == "initialize":
             requested = params.get("protocolVersion", "")
-            return {"jsonrpc": "2.0", "id": request_id, "result": {"protocolVersion": requested if requested in SUPPORTED_PROTOCOLS else PROTOCOL_VERSION, "capabilities": {"tools": {"listChanged": False}, "resources": {"listChanged": False}}, "serverInfo": {"name": "hsb-unified-demo", "version": "2.0.0"}}}
+            return {"jsonrpc": "2.0", "id": request_id, "result": {"protocolVersion": requested if requested in SUPPORTED_PROTOCOLS else PROTOCOL_VERSION, "capabilities": {"tools": {"listChanged": False}, "resources": {"listChanged": False}, "prompts": {"listChanged": False}}, "serverInfo": {"name": "hsb-unified-demo", "version": "2.0.0"}}}
         if method == "ping":
             return {"jsonrpc": "2.0", "id": request_id, "result": {}}
         if method == "tools/list":
@@ -347,6 +375,14 @@ class UnifiedMCP:
             if params.get("uri") != RESOURCE_URI:
                 return _rpc_error(request_id, -32602, "Unknown resource URI")
             return {"jsonrpc": "2.0", "id": request_id, "result": {"contents": [{"uri": RESOURCE_URI, "mimeType": "text/markdown", "text": _workflow_text()}]}}
+        if method == "prompts/list":
+            return {"jsonrpc": "2.0", "id": request_id, "result": {"prompts": self.prompts}}
+        if method == "prompts/get":
+            try:
+                prompt_text = self._prompt_text(params.get("name", ""))
+            except ValueError as exc:
+                return _rpc_error(request_id, -32602, str(exc))
+            return {"jsonrpc": "2.0", "id": request_id, "result": {"description": "HSB MCP demo prompt", "messages": [{"role": "user", "content": {"type": "text", "text": prompt_text}}]}}
         if method == "tools/call":
             name = params.get("name")
             args = params.get("arguments") or {}

@@ -10,6 +10,7 @@ The single service contains:
 - OAuth discovery, dynamic client registration, authorization-code + PKCE flow for Claude web.
 - One authenticated `/mcp` endpoint.
 - Paid and freemium behavior selected from the signed-in demo user.
+- Sample workflows exposed through MCP `prompts/list` and `prompts/get`.
 
 Demo credentials:
 
