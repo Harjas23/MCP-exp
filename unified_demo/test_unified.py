@@ -40,7 +40,8 @@ def main() -> None:
     search_description = next(tool["description"] for tool in paid_tools if tool["name"] == "search_business")
     assert "the count is the permission signal" in next(tool["description"] for tool in paid_tools if tool["name"] == "purchase_business")
     assert "never calls enrichment" in search_description
-    assert "Do not ask a separate yes/no confirmation" in search_description
+    assert "Do not seek a separate yes/no confirmation" in search_description
+    assert "STRICT PRECONDITION: search_business must run first" in next(tool["description"] for tool in paid_tools if tool["name"] == "purchase_business")
 
     prompts = rpc(paid_token, 30, "prompts/list")["result"]["prompts"]
     prompt_names = {prompt["name"] for prompt in prompts}
