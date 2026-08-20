@@ -381,7 +381,7 @@ def _verify_pkce(verifier: str, challenge: str, method: str) -> bool:
 
 
 def _demo_guide() -> str:
-    return "Find me Starbucks in Ohio and show me the masked samples, total count, and insights."
+    return "Using HSB's Sales Genie, find me Starbucks in Ohio and show me the masked samples, total count, and insights."
 
 
 def _login_html(action: str, hidden: dict[str, str] | None = None, message: str = "") -> str:
