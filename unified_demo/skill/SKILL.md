@@ -24,10 +24,10 @@ Use the authenticated user's plan from the MCP session. Do not ask the user to c
 
 There is no standalone match tool or match report. Use only the entity-specific enrichment tool, and only when the user brings their own uploaded data.
 
-1. First call `enrich_business`, `enrich_consumer`, or `enrich_contact` with rows parsed from the user's uploaded file. Never pass a file path.
-2. The tool validates and holds the rows, returns an opaque `enrichment_id`, and asks permission without displaying matched or non-matched counts. Do not deduct credits on this first call.
-3. Explain that each matched record consumes 1 credit and non-matches consume no credits. Do not call the second phase until the user gives permission.
-4. After permission, call the same tool with the exact `enrichment_id` and `confirm=true`. Include `count` only when the user requests a specific number; otherwise omit it to enrich all matched records.
+1. Before calling `enrich_business`, `enrich_consumer`, or `enrich_contact`, present: "Each matched record will consume 1 credit; non-matches consume no credits. Do you want me to proceed?" Never pass a file path.
+2. Do not call an enrichment tool until the user gives permission. No records should be sent to the MCP before permission.
+3. After permission, call the entity-specific enrichment tool with rows parsed from the user's uploaded file, `confirm=true`, and optional `count` only when the user requested a specific number. Omit `count` to enrich all matched records.
+4. The tool validates and matches the rows internally without displaying matched or non-matched counts at the beginning. Do not deduct credits before the permission-gated call.
 5. Paid users follow the same no-credit and partial-credit behavior as purchases. If credits are insufficient, return available records immediately with the shortfall explanation and top-up URL; do not ask permission again. Freemium users receive no enriched records and the upgrade URL.
 6. Contact enrichment includes all matched contacts, including primary and secondary contacts.
 

@@ -69,11 +69,13 @@ def main() -> None:
         {"record_id": "B1", "business_name": "Acme", "full_address": "1 Main Street, Columbus, OH", "email": "a@example.com"},
         {"record_id": "B2", "business_name": "Incomplete", "email": "b@example.com"},
     ]
-    enrichment = payload(rpc(free_token, 8, "tools/call", {"name": "enrich_business", "arguments": {"records": enrichment_records}}))
-    assert enrichment["status"] == "permission_required"
-    assert "matched_count" not in enrichment and "non_matched_count" not in enrichment
-    assert "Do you want me to proceed?" in enrichment["permission_message"]
-    upgrade = rpc(free_token, 9, "tools/call", {"name": "enrich_business", "arguments": {"enrichment_id": enrichment["enrichment_id"], "count": 1, "confirm": True}})
+    permission_required = rpc(free_token, 8, "tools/call", {"name": "enrich_business", "arguments": {"records": enrichment_records}})
+    assert permission_required["result"]["isError"] is True
+    permission_error = payload(permission_required)
+    assert permission_error["status"] == "confirmation_required"
+    assert "No records were processed" in permission_error["error"]
+    assert "matched_count" not in permission_error and "non_matched_count" not in permission_error
+    upgrade = rpc(free_token, 9, "tools/call", {"name": "enrich_business", "arguments": {"records": enrichment_records, "count": 1, "confirm": True}})
     assert upgrade["result"]["isError"] is True
     assert payload(upgrade)["status"] == "upgrade_required"
 
@@ -82,10 +84,7 @@ def main() -> None:
         {"record_id": f"B{i}", "business_name": f"Acme {i}", "full_address": f"{i} Main Street, Columbus, OH", "email": f"acme{i}@example.com"}
         for i in range(20)
     ]
-    enrichment_start = payload(rpc(paid_enrichment_token, 10, "tools/call", {"name": "enrich_business", "arguments": {"records": many_business_rows}}))
-    assert enrichment_start["status"] == "permission_required"
-    assert "matched_count" not in enrichment_start and "non_matched_count" not in enrichment_start
-    enrichment_partial_response = rpc(paid_enrichment_token, 11, "tools/call", {"name": "enrich_business", "arguments": {"enrichment_id": enrichment_start["enrichment_id"], "count": 20, "confirm": True}})
+    enrichment_partial_response = rpc(paid_enrichment_token, 10, "tools/call", {"name": "enrich_business", "arguments": {"records": many_business_rows, "count": 20, "confirm": True}})
     assert enrichment_partial_response["result"]["isError"] is True
     enrichment_partial = payload(enrichment_partial_response)
     assert enrichment_partial["status"] == "insufficient_credits"

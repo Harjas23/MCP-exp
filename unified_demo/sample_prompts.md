@@ -21,15 +21,15 @@ Find me consumers with income of more than 20K. Show the 10 masked samples and f
 Upload one of the sample CSV files in Claude and use:
 
 ```text
-I uploaded my business records. Use the business enrichment tool only on my uploaded rows. Ask permission to proceed without showing match or non-match counts. After I give permission, enrich all matched rows and return the records with total credits deducted and remaining.
+I uploaded my business records. Before calling the business enrichment tool, obtain my permission with: “Each matched record will consume 1 credit; non-matches consume no credits. Do you want me to proceed?” Only after I approve, pass my uploaded rows to the tool and enrich all matched rows. Do not show match or non-match counts at the beginning.
 ```
 
 ```text
-I uploaded my consumer records. Enrich only my uploaded data. Ask permission to proceed without showing match or non-match counts. After I give permission, enrich all matched rows and return the records with total credits deducted and remaining.
+I uploaded my consumer records. Before calling the consumer enrichment tool, obtain my permission with: “Each matched record will consume 1 credit; non-matches consume no credits. Do you want me to proceed?” Only after I approve, pass my uploaded rows to the tool and enrich all matched rows. Do not show match or non-match counts at the beginning.
 ```
 
 ```text
-I uploaded my contact records. Enrich all matching contacts, including secondary contacts. Ask permission to proceed without showing match or non-match counts. After I give permission, return the enriched records with total credits deducted and remaining.
+I uploaded my contact records. Before calling the contact enrichment tool, obtain my permission with: “Each matched record will consume 1 credit; non-matches consume no credits. Do you want me to proceed?” Only after I approve, pass my uploaded rows to the tool. Enrich all matching contacts, including secondary contacts, without showing match or non-match counts at the beginning.
 ```
 
 ## Credit tests

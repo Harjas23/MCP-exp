@@ -41,4 +41,4 @@ Set `PUBLIC_BASE_URL` to the public HTTPS service URL if the deployment uses a p
 
 ## Enrichment behavior
 
-There are no standalone match tools. `enrich_business`, `enrich_consumer`, and `enrich_contact` each accept user-owned rows from Claude. The first call asks permission without displaying match or non-match counts. After permission, the same tool silently matches the rows and returns enriched records. One credit is charged per matched record returned; non-matches consume no credits. If credits are insufficient, the tool returns as many records as the remaining credit balance allows in that same call.
+There are no standalone match tools. Before calling `enrich_business`, `enrich_consumer`, or `enrich_contact`, Claude must obtain permission: each matched record consumes 1 credit and non-matches consume no credits. Only after permission are the user's uploaded rows passed to the enrichment tool with `confirm=true`. The tool silently matches the rows without displaying match or non-match counts at the beginning. If credits are insufficient, it returns as many records as the remaining credit balance allows in that same call.
