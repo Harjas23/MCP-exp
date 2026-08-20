@@ -1,0 +1,4 @@
+interface:
+  display_name: "Unified Auth MCP Workflow"
+  short_description: "Run authenticated paid and freemium MCP workflows"
+  default_prompt: "Use the authenticated user's plan to run masked searches, permission-gated purchases, and user-owned record enrichment with paid or freemium behavior."
