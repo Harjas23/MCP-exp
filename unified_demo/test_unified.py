@@ -39,7 +39,7 @@ def main() -> None:
     assert "no separate match tool" in enrich_description
 
     resources = rpc(paid_token, 3, "resources/list")["result"]["resources"]
-    assert resources[0]["uri"] == "mcp://sales-genie/unified-auth-enrichment-workflow"
+    assert resources[0]["uri"] == "mcp://hsb/unified-auth-enrichment-workflow"
     resource = rpc(paid_token, 4, "resources/read", {"uri": resources[0]["uri"]})
     assert "There is no standalone match tool" in resource["result"]["contents"][0]["text"]
 
@@ -80,7 +80,7 @@ def main() -> None:
             page = response.read().decode()
             assert "paid@example.com" in page and "freemium@example.com" in page and "Using HSB" in page
             assert "HSB" in page and "Copy prompt" in page and "function copyPrompt" in page
-            assert "Using HSB&#x27;s Sales Genie" in page
+            assert "Using HSB MCP" in page
         with urlopen(Request(base + "/mcp", data=b"{}", headers={"Content-Type": "application/json"}, method="POST")) as response:
             raise AssertionError(f"Expected auth failure, got {response.status}")
     except Exception as exc:

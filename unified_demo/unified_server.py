@@ -1,4 +1,4 @@
-"""Unified authenticated Sales Genie MCP demo.
+"""Unified authenticated HSB MCP demo.
 
 This is a self-contained v2 demo. It does not import or modify the original
 paid_server.py or freemium_server.py modules.
@@ -28,7 +28,7 @@ INITIAL_CREDITS = 15
 MAX_BULK_RECORDS = 100
 PROTOCOL_VERSION = "2025-06-18"
 SUPPORTED_PROTOCOLS = {"2025-06-18", "2025-03-26", "2024-11-05"}
-RESOURCE_URI = "mcp://sales-genie/unified-auth-enrichment-workflow"
+RESOURCE_URI = "mcp://hsb/unified-auth-enrichment-workflow"
 
 DEMO_USERS = {
     "paid@example.com": {"password": "paid-demo", "plan": "paid", "display_name": "Paid Demo User"},
@@ -335,7 +335,7 @@ class UnifiedMCP:
             return None
         if method == "initialize":
             requested = params.get("protocolVersion", "")
-            return {"jsonrpc": "2.0", "id": request_id, "result": {"protocolVersion": requested if requested in SUPPORTED_PROTOCOLS else PROTOCOL_VERSION, "capabilities": {"tools": {"listChanged": False}, "resources": {"listChanged": False}}, "serverInfo": {"name": "sales-genie-unified-demo", "version": "2.0.0"}}}
+            return {"jsonrpc": "2.0", "id": request_id, "result": {"protocolVersion": requested if requested in SUPPORTED_PROTOCOLS else PROTOCOL_VERSION, "capabilities": {"tools": {"listChanged": False}, "resources": {"listChanged": False}}, "serverInfo": {"name": "hsb-unified-demo", "version": "2.0.0"}}}
         if method == "ping":
             return {"jsonrpc": "2.0", "id": request_id, "result": {}}
         if method == "tools/list":
@@ -381,7 +381,7 @@ def _verify_pkce(verifier: str, challenge: str, method: str) -> bool:
 
 
 def _demo_guide() -> str:
-    return "Using HSB's Sales Genie, find me Starbucks in Ohio and show me the masked samples, total count, and insights."
+    return "Using HSB MCP, find me Starbucks in Ohio and show me the masked samples, total count, and insights."
 
 
 def _login_html(action: str, hidden: dict[str, str] | None = None, message: str = "") -> str:
@@ -392,7 +392,7 @@ def _login_html(action: str, hidden: dict[str, str] | None = None, message: str 
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Sales Genie | HSB demo</title>
+  <title>HSB MCP | Demo login</title>
   <style>
     :root {{ --ink:#172033; --muted:#667085; --line:#e7eaf0; --blue:#315efb; --blue-dark:#2448c8; --lavender:#eef2ff; }}
     * {{ box-sizing:border-box; }}
@@ -436,12 +436,12 @@ def _login_html(action: str, hidden: dict[str, str] | None = None, message: str 
 </head>
 <body>
   <main class="shell">
-    <div class="brand"><div class="mark">HSB</div><span>Sales Genie MCP</span></div>
+    <div class="brand"><div class="mark">HSB</div><span>HSB MCP</span></div>
     <section class="grid">
       <div class="card welcome">
         <div class="eyebrow">HSB data experience</div>
-        <h1>Explore the right data, with permission.</h1>
-        <p class="lead">A safe MCP demo for masked search, credit-aware reveal, and enrichment of your own business, consumer, and contact records.</p>
+        <h1>One HSB MCP. Two plan experiences.</h1>
+        <p class="lead">Test masked search, credit-aware reveal, and enrichment of your own business, consumer, and contact records.</p>
         <div class="chips"><span class="chip">Masked previews</span><span class="chip">Paid + freemium</span><span class="chip">Claude-ready</span></div>
       </div>
       <div class="card login">
@@ -454,13 +454,13 @@ def _login_html(action: str, hidden: dict[str, str] | None = None, message: str 
           <input id="username" name="username" type="email" placeholder="you@example.com" autocomplete="username" required>
           <label for="password">Password</label>
           <input id="password" name="password" type="password" placeholder="Enter demo password" autocomplete="current-password" required>
-          <button class="primary" type="submit">Continue to Sales Genie</button>
+          <button class="primary" type="submit">Continue to HSB MCP</button>
         </form>
         <div class="demo"><div><strong>Paid demo</strong><code>paid@example.com<br>paid-demo</code></div><div><strong>Freemium demo</strong><code>freemium@example.com<br>freemium-demo</code></div></div>
         <div class="prompt"><div class="prompt-head"><strong>Try this prompt in Claude</strong><button class="copy" id="copyButton" type="button" onclick="copyPrompt()">Copy prompt</button></div><p class="prompt-text" id="prompt">{prompt}</p><p class="status" id="copyStatus" aria-live="polite"></p></div>
       </div>
     </section>
-    <footer>HSB · Sales Genie MCP demonstration environment</footer>
+    <footer>HSB · MCP demonstration environment</footer>
   </main>
   <script>
     function showCopied() {{
@@ -542,7 +542,7 @@ class Handler(BaseHTTPRequestHandler):
         if parsed.path in ("/", "/login"):
             self.send_bytes(200, _login_html("/login").encode(), "text/html; charset=utf-8"); return
         if parsed.path == "/health":
-            self.send_json(200, {"status": "ok", "service": "sales-genie-unified-demo"}); return
+            self.send_json(200, {"status": "ok", "service": "hsb-unified-demo"}); return
         if parsed.path == "/.well-known/oauth-authorization-server":
             base = self.base_url(); self.send_json(200, {"issuer": base, "authorization_endpoint": base + "/oauth/authorize", "token_endpoint": base + "/oauth/token", "registration_endpoint": base + "/oauth/register", "code_challenge_methods_supported": ["S256", "plain"]}); return
         if parsed.path == "/.well-known/oauth-protected-resource":
@@ -612,7 +612,7 @@ MCP = UnifiedMCP()
 def main() -> None:
     port = int(os.environ.get("PORT", "8000"))
     server = ThreadingHTTPServer(("0.0.0.0", port), Handler)
-    print(f"sales-genie-unified-demo listening on {port}", flush=True)
+    print(f"hsb-unified-demo listening on {port}", flush=True)
     server.serve_forever()
 
 

@@ -1,6 +1,6 @@
 ---
 name: unified-auth-enrichment-workflow
-description: Operate the unified authenticated Sales Genie MCP demo with paid and freemium users, masked search previews, credit-gated purchases, and user-owned business, consumer, and contact enrichment. Use when the MCP server identifies the signed-in demo user's plan and the workflow must preserve paid or freemium behavior.
+description: Operate the unified authenticated HSB MCP demo with paid and freemium users, masked search previews, credit-gated purchases, and user-owned business, consumer, and contact enrichment. Use when the MCP server identifies the signed-in demo user's plan and the workflow must preserve paid or freemium behavior.
 ---
 
 # Unified Authenticated MCP Workflow

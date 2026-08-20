@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: sales-genie-unified-demo
+    name: hsb-unified-demo
     env: python
     plan: free
     buildCommand: python -m py_compile unified_demo/unified_server.py

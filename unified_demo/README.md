@@ -1,4 +1,4 @@
-# Unified authenticated Sales Genie MCP demo
+# Unified authenticated HSB MCP demo
 
 This directory is a separate v2 implementation. It does not modify or import the original paid or freemium servers.
 
