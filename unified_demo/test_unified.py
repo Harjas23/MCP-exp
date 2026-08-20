@@ -37,6 +37,10 @@ def main() -> None:
     enrich_description = next(tool["description"] for tool in paid_tools if tool["name"] == "enrich_business")
     assert "user brings their own uploaded records" in enrich_description
     assert "no separate match tool" in enrich_description
+    search_description = next(tool["description"] for tool in paid_tools if tool["name"] == "search_business")
+    assert "the count is the permission signal" in next(tool["description"] for tool in paid_tools if tool["name"] == "purchase_business")
+    assert "never calls enrichment" in search_description
+    assert "Do not ask a separate yes/no confirmation" in search_description
 
     prompts = rpc(paid_token, 30, "prompts/list")["result"]["prompts"]
     prompt_names = {prompt["name"] for prompt in prompts}
