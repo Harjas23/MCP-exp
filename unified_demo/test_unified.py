@@ -37,6 +37,9 @@ def main() -> None:
     enrich_description = next(tool["description"] for tool in paid_tools if tool["name"] == "enrich_business")
     assert "user brings their own uploaded records" in enrich_description
     assert "no separate match tool" in enrich_description
+    assert "CREDIT COST: Exactly 1 credit" in enrich_description
+    assert "MANDATORY CONFIRMATION" in enrich_description
+    assert "Do NOT call this endpoint without explicit user approval" in enrich_description
     search_description = next(tool["description"] for tool in paid_tools if tool["name"] == "search_business")
     assert "the count is the permission signal" in next(tool["description"] for tool in paid_tools if tool["name"] == "purchase_business")
     assert "never calls enrichment" in search_description
