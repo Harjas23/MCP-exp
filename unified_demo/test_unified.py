@@ -78,7 +78,7 @@ def main() -> None:
             raise AssertionError("Unified server did not start")
         with urlopen(base + "/login", timeout=2) as response:
             page = response.read().decode()
-            assert "paid@example.com" in page and "freemium@example.com" in page and "Find me Starbucks" in page
+            assert "paid@example.com" in page and "freemium@example.com" in page and "Using HSB" in page
             assert "HSB" in page and "Copy prompt" in page and "function copyPrompt" in page
             assert "Using HSB&#x27;s Sales Genie" in page
         with urlopen(Request(base + "/mcp", data=b"{}", headers={"Content-Type": "application/json"}, method="POST")) as response:
