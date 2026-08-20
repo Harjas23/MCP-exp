@@ -245,7 +245,19 @@ class UnifiedMCP:
         if not confirm:
             return _text_result({"status": "confirmation_required", "message": "User permission is required before revealing records.", "requested_records": count, "credits_required": count, "credits_available": state.credits})
         if count > state.credits:
-            return _text_result({"status": "insufficient_credits", "error": f"You can reveal only {state.credits} records with your remaining credits, or top up credits.", "records": [], "available_records": state.credits, "credits_available": state.credits, "top_up_url": TOP_UP_URL, "next_step": f"If the user says go ahead with {state.credits} records, call this tool again with count={state.credits} and confirm=true."}, error=True)
+            reveal_count = min(state.credits, len(search["records"]))
+            records = [self._core_record(kind, record) for record in search["records"][:reveal_count]]
+            state.credits -= reveal_count
+            return _text_result({
+                "status": "insufficient_credits",
+                "error": f"Insufficient credits: you requested {count} records, but only {reveal_count} could be returned with your remaining credits. Top up credits to reveal more.",
+                "records": records,
+                "records_returned": reveal_count,
+                "available_records": reveal_count,
+                "credits_deducted": reveal_count,
+                "credits_remaining": state.credits,
+                "top_up_url": TOP_UP_URL,
+            }, error=True)
         reveal_count = min(count, len(search["records"]))
         records = [self._core_record(kind, record) for record in search["records"][:reveal_count]]
         state.credits -= reveal_count
@@ -263,34 +275,45 @@ class UnifiedMCP:
                 raise ValueError("A maximum of 100 records can be enriched in one call.")
             if any(not isinstance(record, dict) for record in records):
                 raise ValueError("Each records item must be an object.")
-            matched = [record for record in records if _is_match(kind, record)]
             state.enrichment_sequence += 1
             enrichment_id = f"enrich-{kind}-{state.enrichment_sequence:03d}"
-            state.enrichments[enrichment_id] = {"kind": kind, "records": matched}
+            state.enrichments[enrichment_id] = {"kind": kind, "records": records}
             return _text_result({
                 "status": "permission_required", "enrichment_id": enrichment_id, "entity": kind,
-                "matched_count": len(matched), "non_matched_count": len(records) - len(matched),
-                "permission_message": "Each matched record will consume 1 credit; non-matched records consume no credits. How many matched records would you like to enrich?",
-                "next_step": f"After the user provides a number, call enrich_{kind} again with this exact enrichment_id, count, and confirm=true.",
+                "permission_message": "Each matched record will consume 1 credit; non-matched records consume no credits. Do you want me to proceed?",
+                "next_step": f"After the user gives permission, call enrich_{kind} again with this exact enrichment_id and confirm=true. Include count only if the user requested a specific number; otherwise enrich all matched records.",
             })
         enrichment = state.enrichments.get(enrichment_id)
         if enrichment is None or enrichment["kind"] != kind:
             raise ValueError("Use the exact enrichment_id returned by the corresponding enrichment tool.")
-        if not isinstance(count, int) or isinstance(count, bool) or count < 1:
-            raise ValueError("count must be a positive integer.")
+        if count is not None and (not isinstance(count, int) or isinstance(count, bool) or count < 1):
+            raise ValueError("count must be a positive integer when provided.")
         if not confirm:
             return _text_result({"status": "confirmation_required", "message": "User permission is required before enriching records."})
         if state.plan == "freemium":
             return _text_result({"status": "upgrade_required", "error": "You don't have an active paid subscription. Buy credits or upgrade to a Pro or Teams plan to enrich records.", "upgrade_url": TOP_UP_URL, "records": []}, error=True)
         if state.credits == 0:
             return _text_result({"status": "no_credits", "error": "No credits left. No records were enriched.", "records": [], "credits_available": 0, "top_up_url": TOP_UP_URL}, error=True)
-        matched_count = len(enrichment["records"])
-        chargeable = min(count, matched_count)
-        if chargeable > state.credits:
-            return _text_result({"status": "insufficient_credits", "error": f"Insufficient credits. You can only enrich {state.credits} matched records, or top up credits.", "records": [], "available_records": state.credits, "credits_available": state.credits, "top_up_url": TOP_UP_URL, "next_step": f"If the user says go ahead with {state.credits} records, call this tool again with count={state.credits} and confirm=true."}, error=True)
-        enriched = [self._enriched_record(kind, record, index) for index, record in enumerate(enrichment["records"][:chargeable])]
+        matched_records = [record for record in enrichment["records"] if _is_match(kind, record)]
+        requested_count = count if count is not None else len(matched_records)
+        chargeable = min(requested_count, len(matched_records))
+        partial = chargeable > state.credits
+        if partial:
+            chargeable = state.credits
+        enriched = [self._enriched_record(kind, record, index) for index, record in enumerate(matched_records[:chargeable])]
         state.credits -= chargeable
-        return _text_result({"status": "success", "records": enriched, "records_returned": chargeable, "matched_records_charged": chargeable, "credits_deducted": chargeable, "credits_remaining": state.credits})
+        if partial:
+            return _text_result({
+                "status": "insufficient_credits",
+                "error": f"Insufficient credits: you requested {requested_count} records, but only {chargeable} could be enriched with your remaining credits. Top up credits to enrich more.",
+                "records": enriched,
+                "records_returned": chargeable,
+                "available_records": chargeable,
+                "credits_deducted": chargeable,
+                "credits_remaining": state.credits,
+                "top_up_url": TOP_UP_URL,
+            }, error=True)
+        return _text_result({"status": "success", "records": enriched, "records_returned": chargeable, "credits_deducted": chargeable, "credits_remaining": state.credits})
 
     @staticmethod
     def _core_record(kind: str, record: dict[str, Any]) -> dict[str, Any]:
@@ -315,14 +338,14 @@ class UnifiedMCP:
         consumer_props = {"city": {"type": "string"}, "state": {"type": "string"}, "name": {"type": "string"}, "income": {"type": "string"}, "age": {"type": "string"}}
         contact_props = {"company_name": {"type": "string"}, "industry": {"type": "string"}, "job_title": {"type": "string"}}
         purchase = {"search_id": {"type": "string", "description": "Copy exactly from the preceding matching search response; never ask the user for it."}, "count": {"type": "integer", "minimum": 1}, "confirm": {"type": "boolean", "description": "Set true only after the user provides a record count as permission."}}
-        enrich = {"records": {"type": "array", "maxItems": MAX_BULK_RECORDS, "description": "The user's own uploaded rows parsed by Claude. Do not use this tool for MCP-generated or provider-owned records.", "items": {"type": "object", "additionalProperties": True}}, "enrichment_id": {"type": "string", "description": "Copy exactly from the first call to this same enrichment tool."}, "count": {"type": "integer", "minimum": 1, "description": "Number of matched records the user authorized."}, "confirm": {"type": "boolean", "description": "Set true only after the user provides the count as permission."}}
+        enrich = {"records": {"type": "array", "maxItems": MAX_BULK_RECORDS, "description": "The user's own uploaded rows parsed by Claude. Do not use this tool for MCP-generated or provider-owned records.", "items": {"type": "object", "additionalProperties": True}}, "enrichment_id": {"type": "string", "description": "Copy exactly from the first call to this same enrichment tool."}, "count": {"type": "integer", "minimum": 1, "description": "Optional number of records the user authorized; omit to enrich all matched records."}, "confirm": {"type": "boolean", "description": "Set true only after the user gives permission."}}
         search_desc = "MUST display all 10 masked samples exactly as returned, then show total matches and full-result insights including verified email and phone counts. Ask how many records to reveal; if the user gives a number, call the matching purchase tool. If no number is given, do not purchase."
-        enrich_desc = "Use only when the user brings their own uploaded records. This is the only enrichment step; there is no separate match tool or match report. First call with records to calculate matched and non-matched counts and ask permission. Do not call the second phase without the user's record count. Then call this same tool with the exact enrichment_id, count, and confirm=true. Charge 1 credit per matched record; non-matches consume no credits."
+        enrich_desc = "Use only when the user brings their own uploaded records. This is the only enrichment step; there is no separate match tool or match report. First call with records to validate and hold the user's rows, but do not display matched or non-matched counts. Ask only for permission to proceed, explaining that each matched record consumes 1 credit and non-matches consume no credits. Do not call the second phase until the user gives permission. Then call this same tool with the exact enrichment_id and confirm=true; include count only when the user requested a specific number, otherwise omit it to enrich all matched records. If credits are insufficient, return the available records immediately with the insufficient-credit explanation and top-up link; do not ask for permission again."
         return [
             _tool("search_business", "Search businesses. " + search_desc, search_common), _tool("search_consumer", "Search consumers. " + search_desc, consumer_props), _tool("search_contact", "Search contacts. " + search_desc, contact_props),
-            _tool("purchase_business", "Call search_business first. Never ask for or invent search_id. Do not call without the user's record count permission. Paid users follow credit validation; freemium users receive the upgrade link.", purchase, ["search_id", "count"]),
-            _tool("purchase_consumer", "Call search_consumer first. Never ask for or invent search_id. Do not call without the user's record count permission. Paid users follow credit validation; freemium users receive the upgrade link.", purchase, ["search_id", "count"]),
-            _tool("purchase_contact", "Call search_contact first. Never ask for or invent search_id. Do not call without the user's record count permission. Paid users follow credit validation; freemium users receive the upgrade link.", purchase, ["search_id", "count"]),
+            _tool("purchase_business", "Call search_business first. Never ask for or invent search_id. Do not call without the user's record count permission. Paid users follow credit validation; if the requested count exceeds remaining credits, return the available records immediately and explain the shortfall without asking permission again; freemium users receive the upgrade link.", purchase, ["search_id", "count"]),
+            _tool("purchase_consumer", "Call search_consumer first. Never ask for or invent search_id. Do not call without the user's record count permission. Paid users follow credit validation; if the requested count exceeds remaining credits, return the available records immediately and explain the shortfall without asking permission again; freemium users receive the upgrade link.", purchase, ["search_id", "count"]),
+            _tool("purchase_contact", "Call search_contact first. Never ask for or invent search_id. Do not call without the user's record count permission. Paid users follow credit validation; if the requested count exceeds remaining credits, return the available records immediately and explain the shortfall without asking permission again; freemium users receive the upgrade link.", purchase, ["search_id", "count"]),
             _tool("enrich_business", enrich_desc + " Return business name, SIC, employee size, estimated revenue, address, and email.", enrich, []),
             _tool("enrich_consumer", enrich_desc + " Return consumer name, age, income, email, and address.", enrich, []),
             _tool("enrich_contact", enrich_desc + " Return all contacts, including secondary contacts, with name, business name, SIC code, job title, and email address.", enrich, []),
@@ -337,7 +360,7 @@ class UnifiedMCP:
             {"name": "business_enrichment", "title": "Business enrichment from uploaded data", "description": "Enrich the user's uploaded business rows with permission and credit validation."},
             {"name": "consumer_enrichment", "title": "Consumer enrichment from uploaded data", "description": "Enrich the user's uploaded consumer rows with permission and credit validation."},
             {"name": "contact_enrichment", "title": "Contact enrichment from uploaded data", "description": "Enrich all matching uploaded contacts, including secondary contacts, with permission and credit validation."},
-            {"name": "partial_credit_test", "title": "Partial-credit test", "description": "Request more records than the paid user's remaining credits to test the two-step partial-credit flow."},
+            {"name": "partial_credit_test", "title": "Partial-credit test", "description": "Request more records than the paid user's remaining credits to test immediate partial results and the top-up message."},
         ]
 
     @staticmethod
@@ -346,10 +369,10 @@ class UnifiedMCP:
             "business_search": "Find me Starbucks in Ohio. Show all 10 masked samples, total matches, and full-result insights. Then ask how many records I want to reveal.",
             "contact_search": "Find me contacts working as managers. Show all 10 masked samples and full-result insights. Then ask how many records I want to reveal.",
             "consumer_search": "Find me consumers with income of more than 20K. Show all 10 masked samples and full-result insights. Then ask how many records I want to reveal.",
-            "business_enrichment": "I uploaded my business records. Use only my uploaded rows with the business enrichment tool. First return matched and non-matched counts, then ask how many matched records I want to enrich. Do not enrich until I provide the number.",
-            "consumer_enrichment": "I uploaded my consumer records. Use only my uploaded rows with the consumer enrichment tool. First return matched and non-matched counts, then ask how many matched records I want to enrich. Do not enrich until I provide the number.",
-            "contact_enrichment": "I uploaded my contact records. Use only my uploaded rows with the contact enrichment tool. Include primary and secondary contacts. First return matched and non-matched counts, then ask how many matched records I want to enrich. Do not enrich until I provide the number.",
-            "partial_credit_test": "Request 25 records and follow the paid partial-credit flow. If the server says I can reveal only the remaining credit balance, wait for me to say go ahead with that number before calling the tool again.",
+            "business_enrichment": "I uploaded my business records. Use only my uploaded rows with the business enrichment tool. Ask permission to proceed without showing match or non-match counts. After I give permission, enrich all matched rows and return the records with credit totals.",
+            "consumer_enrichment": "I uploaded my consumer records. Use only my uploaded rows with the consumer enrichment tool. Ask permission to proceed without showing match or non-match counts. After I give permission, enrich all matched rows and return the records with credit totals.",
+            "contact_enrichment": "I uploaded my contact records. Use only my uploaded rows with the contact enrichment tool. Include primary and secondary contacts. Ask permission to proceed without showing match or non-match counts. After I give permission, enrich all matched rows and return the records with credit totals.",
+            "partial_credit_test": "Request 25 records and follow the paid partial-credit flow. If the request exceeds remaining credits, return the available records immediately with the insufficient-credit explanation and top-up link; do not ask for permission again.",
         }
         if name not in prompts:
             raise ValueError(f"Unknown prompt: {name}")

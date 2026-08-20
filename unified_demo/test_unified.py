@@ -55,9 +55,10 @@ def main() -> None:
     assert search["insights"]["total_verified_phone_numbers"] >= 0
     purchase_error = rpc(paid_token, 6, "tools/call", {"name": "purchase_business", "arguments": {"search_id": search["search_id"], "count": 16, "confirm": True}})
     assert purchase_error["result"]["isError"] is True
-    assert payload(purchase_error)["status"] == "insufficient_credits"
-    purchase = payload(rpc(paid_token, 7, "tools/call", {"name": "purchase_business", "arguments": {"search_id": search["search_id"], "count": 15, "confirm": True}}))
-    assert purchase["records_returned"] == 15 and purchase["credits_remaining"] == 0
+    purchase_partial = payload(purchase_error)
+    assert purchase_partial["status"] == "insufficient_credits"
+    assert purchase_partial["records_returned"] == 15
+    assert purchase_partial["credits_deducted"] == 15 and purchase_partial["credits_remaining"] == 0
 
     enrichment_records = [
         {"record_id": "B1", "business_name": "Acme", "full_address": "1 Main Street, Columbus, OH", "email": "a@example.com"},
@@ -65,10 +66,26 @@ def main() -> None:
     ]
     enrichment = payload(rpc(free_token, 8, "tools/call", {"name": "enrich_business", "arguments": {"records": enrichment_records}}))
     assert enrichment["status"] == "permission_required"
-    assert enrichment["matched_count"] == 1 and enrichment["non_matched_count"] == 1
+    assert "matched_count" not in enrichment and "non_matched_count" not in enrichment
+    assert "Do you want me to proceed?" in enrichment["permission_message"]
     upgrade = rpc(free_token, 9, "tools/call", {"name": "enrich_business", "arguments": {"enrichment_id": enrichment["enrichment_id"], "count": 1, "confirm": True}})
     assert upgrade["result"]["isError"] is True
     assert payload(upgrade)["status"] == "upgrade_required"
+
+    paid_enrichment_token = _issue_token("paid@example.com")
+    many_business_rows = [
+        {"record_id": f"B{i}", "business_name": f"Acme {i}", "full_address": f"{i} Main Street, Columbus, OH", "email": f"acme{i}@example.com"}
+        for i in range(20)
+    ]
+    enrichment_start = payload(rpc(paid_enrichment_token, 10, "tools/call", {"name": "enrich_business", "arguments": {"records": many_business_rows}}))
+    assert enrichment_start["status"] == "permission_required"
+    assert "matched_count" not in enrichment_start and "non_matched_count" not in enrichment_start
+    enrichment_partial_response = rpc(paid_enrichment_token, 11, "tools/call", {"name": "enrich_business", "arguments": {"enrichment_id": enrichment_start["enrichment_id"], "count": 20, "confirm": True}})
+    assert enrichment_partial_response["result"]["isError"] is True
+    enrichment_partial = payload(enrichment_partial_response)
+    assert enrichment_partial["status"] == "insufficient_credits"
+    assert enrichment_partial["records_returned"] == 15
+    assert enrichment_partial["credits_deducted"] == 15 and enrichment_partial["credits_remaining"] == 0
 
     process = subprocess.Popen([sys.executable, str(ROOT / "unified_server.py")], env={**os.environ, "PORT": "8777"}, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     base = "http://127.0.0.1:8777"

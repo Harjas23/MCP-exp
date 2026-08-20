@@ -17,7 +17,7 @@ Use the authenticated user's plan from the MCP session. Do not ask the user to c
 
 ## Purchase
 
-- Paid user: charge one credit per returned record. With insufficient credits, return no records first and offer the available count or the top-up URL. With zero credits, return no records and the top-up URL. Show credits deducted and remaining whenever records are returned.
+- Paid user: charge one credit per returned record. With insufficient credits, return records immediately up to the remaining credit balance, explain why fewer records were returned, and include the top-up URL; do not ask for permission again. With zero credits, return no records and the top-up URL. Show credits deducted and remaining whenever records are returned.
 - Freemium user: return no records and the upgrade URL. Do not imply that freemium credits exist.
 
 ## Enrichment
@@ -25,10 +25,10 @@ Use the authenticated user's plan from the MCP session. Do not ask the user to c
 There is no standalone match tool or match report. Use only the entity-specific enrichment tool, and only when the user brings their own uploaded data.
 
 1. First call `enrich_business`, `enrich_consumer`, or `enrich_contact` with rows parsed from the user's uploaded file. Never pass a file path.
-2. The tool validates records and returns matched and non-matched counts plus an `enrichment_id`. Do not deduct credits on this first call.
-3. Display the permission message: each matched record consumes 1 credit; non-matches consume no credits. Ask how many matched records the user wants to enrich.
-4. Do not call the second enrichment phase unless the user provides a number. Then call the same tool with the exact `enrichment_id`, count, and `confirm=true`.
-5. Paid users follow the same no-credit and partial-credit behavior as purchases. Freemium users receive no enriched records and the upgrade URL.
+2. The tool validates and holds the rows, returns an opaque `enrichment_id`, and asks permission without displaying matched or non-matched counts. Do not deduct credits on this first call.
+3. Explain that each matched record consumes 1 credit and non-matches consume no credits. Do not call the second phase until the user gives permission.
+4. After permission, call the same tool with the exact `enrichment_id` and `confirm=true`. Include `count` only when the user requests a specific number; otherwise omit it to enrich all matched records.
+5. Paid users follow the same no-credit and partial-credit behavior as purchases. If credits are insufficient, return available records immediately with the shortfall explanation and top-up URL; do not ask permission again. Freemium users receive no enriched records and the upgrade URL.
 6. Contact enrichment includes all matched contacts, including primary and secondary contacts.
 
 ## Demo users

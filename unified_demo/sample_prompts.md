@@ -21,15 +21,15 @@ Find me consumers with income of more than 20K. Show the 10 masked samples and f
 Upload one of the sample CSV files in Claude and use:
 
 ```text
-I uploaded my business records. Use the business enrichment tool on my uploaded rows. First tell me how many records match and how many do not match, then ask how many matched records I want to enrich. Do not enrich until I provide the number.
+I uploaded my business records. Use the business enrichment tool only on my uploaded rows. Ask permission to proceed without showing match or non-match counts. After I give permission, enrich all matched rows and return the records with total credits deducted and remaining.
 ```
 
 ```text
-I uploaded my consumer records. Enrich only my uploaded data. First return matched and non-matched counts, then ask for my permission by asking how many matched records to enrich.
+I uploaded my consumer records. Enrich only my uploaded data. Ask permission to proceed without showing match or non-match counts. After I give permission, enrich all matched rows and return the records with total credits deducted and remaining.
 ```
 
 ```text
-I uploaded my contact records. Enrich all matching contacts, including secondary contacts. First return matched and non-matched counts, then wait for my requested count before enriching.
+I uploaded my contact records. Enrich all matching contacts, including secondary contacts. Ask permission to proceed without showing match or non-match counts. After I give permission, return the enriched records with total credits deducted and remaining.
 ```
 
 ## Credit tests
@@ -38,4 +38,4 @@ I uploaded my contact records. Enrich all matching contacts, including secondary
 Reveal 25 records.
 ```
 
-When the paid account has fewer credits, the server must return no records first and offer the available count or top-up link. If the user then says `go ahead with the available number`, call the same tool again with that count.
+When the paid account has fewer credits, the server must return records immediately up to the remaining credit balance, explain why fewer records were returned, and include the top-up link. Do not ask permission again.
